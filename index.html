@@ -189,9 +189,8 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <button class="btn" id="favBtn" aria-pressed="false" hidden>★ Favoritos</button>
   <button class="btn" id="presBtn" aria-pressed="false" hidden>Presupuestos</button>
   <button class="btn" id="cfgBtn" hidden>Configurar</button>
-  <button class="btn" id="editBtn" aria-pressed="false">Modo edición</button>
+  <button class="btn on" id="editBtn" aria-pressed="true" hidden>Terminar edición</button>
   <button class="btn pri" id="addBtn">+ Agregar</button>
-  <button class="btn" id="csvBtn">Exportar CSV</button>
   <button class="btn" id="loginBtn" hidden>Ingresar</button>
  </div>
 </div></div>
@@ -279,6 +278,11 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 <div class="ov" id="cov"><form class="pane dlg" id="cform" aria-labelledby="cT">
  <button type="button" class="x" id="cClose" aria-label="Cerrar">×</button>
  <h2 id="cT">Configurar</h2>
+ <div class="acts" style="margin:12px 0 0">
+  <button type="button" class="btn pri" id="cfEdit">Modo edición</button>
+  <button type="button" class="btn" id="csvBtn">Exportar CSV</button>
+ </div>
+ <p class="note" id="cfEditNote">Modo edición: cambiar nombres propios y precios de lista, y eliminar repuestos, directo en la tabla. Exportar CSV: descarga la lista que estás viendo (con el filtro o búsqueda aplicados).</p>
  <h3 style="margin:16px 0 0">Precios de la lista</h3>
  <p class="note" id="cGlobalNote">Valen para todos los que usan la lista.</p>
  <div class="pgrid">
@@ -566,7 +570,9 @@ $('#favCopy').addEventListener('click',async()=>{const rs=favRows();if(!rs.lengt
   const lines=rs.map(({f,x})=>`${f.cantidad} x ${nomTxt(x)} (${x.c}) - ${money(fin(x.p))} c/u = ${money(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
   const tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0);
   try{await navigator.clipboard.writeText((FAV_SHARED?'Favoritos compartidos':'Repuestos seleccionados')+'\n'+lines.join('\n')+'\nTotal: '+money(tot)+' + IVA');toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
-$('#editBtn').addEventListener('click',()=>{editMode=!editMode;$('#editBtn').classList.toggle('on',editMode);$('#editBtn').setAttribute('aria-pressed',editMode);$('#editBtn').textContent=editMode?'Terminar edición':'Modo edición';render()});
+function setEdit(v){editMode=!!v;$('#editBtn').hidden=!editMode;if(editMode){favMode=false;presMode=false;$('#favBtn').classList.remove('on');$('#presBtn').classList.remove('on')}render()}
+$('#editBtn').addEventListener('click',()=>{setEdit(false);toast('Edición terminada.')});
+$('#cfEdit').addEventListener('click',()=>{$('#cov').classList.remove('open');setEdit(!editMode);if(editMode){window.scrollTo({top:0});toast('Modo edición activo: tocá un nombre o precio para cambiarlo.')}});
 $('#tb').addEventListener('click',e=>{
   const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}
   const o=e.target.closest('[data-open]');if(o){openPane(o.dataset.open);return}
@@ -864,6 +870,7 @@ function openCfg(){
   $('#pct').value=CONF.pct;$('#ivaIn').value=CONF.iva;$('#pct').disabled=!logged;$('#ivaIn').disabled=!logged;
   $('#cGlobalNote').textContent=logged?'Valen para todos los que usan la lista.':'Valen para todos; solo los editores los pueden cambiar.';
   $('#aumBox').hidden=!logged;if(logged)aumInit();
+  $('#cfEdit').hidden=!logged;$('#cfEdit').textContent=editMode?'Terminar modo edición':'Modo edición';$('#cfEditNote').textContent=logged?'Modo edición: cambiar nombres propios y precios de lista, y eliminar repuestos, directo en la tabla. Exportar CSV: descarga la lista que estás viendo (con el filtro o búsqueda aplicados).':'Exportar CSV: descarga la lista que estás viendo (con el filtro o búsqueda aplicados).';
   $('#cfValor').value=PREF.valor_hora||'';$('#cfMon').value=PREF.moneda_hora||'ARS';
   $('#cfEmp').value=PREF.empresa||'';$('#cfDatos').value=PREF.datos||'';cfLogo=PREF.logo||null;drawLogo();$('#cMsg').textContent='';cfgEj();$('#cov').classList.add('open');
 }
@@ -885,8 +892,8 @@ async function setSession(s){
   const act=!!(me&&me.activo);$('#presBtn').hidden=!act;$('#cfgBtn').hidden=!act;if(!act){presMode=false;cur=null;PRES=[]}else{await loadPres()}
   const isAdm=logged&&me.rol==='admin';
   $('#loginBtn').hidden=false;$('#loginBtn').textContent=!session?'Ingresar':isAdm?'Panel admin':'Mi cuenta';
-  ['#editBtn','#addBtn'].forEach(s=>$(s).hidden=!logged);$('#pct').disabled=!logged;
-  if(!logged&&editMode)$('#editBtn').click();
+  $('#addBtn').hidden=!logged;$('#pct').disabled=!logged;
+  if(!logged&&editMode)setEdit(false);
   if(session&&!logged)$('#sync').textContent=me&&me.activo?'Tu usuario es de consulta: podés ver la lista y usar favoritos.':'Tu usuario no está habilitado. Pedíselo al administrador.';
   render();if(openId)drawPane();
   if($('#aov').classList.contains('open'))openAccount();
