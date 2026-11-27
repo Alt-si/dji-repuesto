@@ -57,6 +57,7 @@ tr:hover td{background:var(--soft)}
 .tag.e{background:var(--acc);color:#fff}
 .code{font:500 14px 'Archivo Narrow',sans-serif;white-space:nowrap;letter-spacing:.01em}
 .gl{font-size:13px;color:var(--acc);font-weight:600;text-decoration:none;display:inline-block;padding:4px 0}.gl:hover{text-decoration:underline}
+.iv{display:block;font-size:12px;color:var(--mut)}
 .pr{white-space:nowrap;font-variant-numeric:tabular-nums}
 .fin{font-weight:800;font-size:17px;color:var(--field)}
 :root[data-theme=dark] .fin{color:#7fd3b4}
@@ -80,7 +81,7 @@ tr:hover td{background:var(--soft)}
 .prices div{background:var(--soft);border-radius:12px;padding:12px}
 .prices small{display:block;color:var(--mut);font-size:13px}
 .prices strong{font-size:24px;white-space:nowrap}
-.prices .f{background:var(--field);color:#fff}.prices .f small{color:#cfe6dc}
+.prices.one{grid-template-columns:1fr}.prices .f{background:var(--field);color:#fff}.prices .f small{color:#cfe6dc}
 label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
 .fi{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font-size:16px}
 textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
@@ -170,7 +171,6 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <p class="sub" id="sub">Vigente desde el 18/11/2026 hasta nuevo aviso · precios en USD</p>
  </div>
  <div class="dol" id="dol" hidden><small>Dólar oficial Banco Nación</small><div><span>Venta <b id="dVenta"></b></span><span class="dc">Compra <b id="dCompra"></b></span></div><small id="dFecha"></small></div>
- <div class="pct"><span>Precio final = precio +</span><input id="pct" type="number" min="0" step="0.5" value="10" aria-label="Porcentaje de recargo"><span>%</span></div>
 </div></header>
 
 <div class="bar"><div class="wrap">
@@ -184,6 +184,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <div class="seg" role="group" aria-label="Moneda"><button class="btn" data-mon="USD">USD</button><button class="btn" data-mon="ARS">Pesos</button></div>
   <button class="btn" id="favBtn" aria-pressed="false" hidden>★ Favoritos</button>
   <button class="btn" id="presBtn" aria-pressed="false" hidden>Presupuestos</button>
+  <button class="btn" id="cfgBtn" hidden>Configurar</button>
   <button class="btn" id="editBtn" aria-pressed="false">Modo edición</button>
   <button class="btn pri" id="addBtn">+ Agregar</button>
   <button class="btn" id="csvBtn">Exportar CSV</button>
@@ -215,7 +216,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
     <label>Moneda<select class="fi" id="peMon"><option value="ARS">Pesos</option><option value="USD">USD</option></select></label>
     <div class="moSub"><small>Mano de obra</small><b id="peMoTot"></b></div>
    </div>
-   <p class="note">El valor hora queda guardado como tuyo para los próximos presupuestos.</p>
+   <p class="note">El valor hora viene de <b>Configurar</b>; acá lo podés cambiar solo para este presupuesto.</p>
    <div class="ptot" id="peTot"></div>
    <div class="acts"><button class="btn" id="peDel">Eliminar presupuesto</button></div>
   </div>
@@ -228,7 +229,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <div id="favList"></div>
  </section>
  <table id="tbl">
-  <thead><tr><th style="width:80px">Imagen</th><th>Repuesto</th><th>Código</th><th class="n">Precio</th><th class="n" id="thFin">Precio final (+10%)</th><th id="thDel" style="width:44px" hidden></th></tr></thead>
+  <thead><tr><th style="width:80px">Imagen</th><th>Repuesto</th><th>Código</th><th class="n" id="thBase" hidden>Precio de lista</th><th class="n" id="thFin">Precio final + IVA</th><th id="thDel" style="width:44px" hidden></th></tr></thead>
   <tbody id="tb"></tbody>
  </table>
  <div class="empty" id="empty" hidden>No hay repuestos que coincidan con la búsqueda.</div>
@@ -273,6 +274,25 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
  <form id="pwForm"><label for="pw1">Contraseña nueva (mínimo 8 caracteres)</label><input class="fi" id="pw1" type="password" autocomplete="new-password" minlength="8" required>
  <p class="note" id="pwMsg"></p><div class="acts"><button class="btn" type="submit">Guardar contraseña</button><button class="btn" type="button" id="aSalir">Cerrar sesión</button></div></form>
 </div></div>
+<div class="ov" id="cov"><form class="pane dlg" id="cform" aria-labelledby="cT">
+ <button type="button" class="x" id="cClose" aria-label="Cerrar">×</button>
+ <h2 id="cT">Configurar</h2>
+ <h3 style="margin:16px 0 0">Precios de la lista</h3>
+ <p class="note" id="cGlobalNote">Valen para todos los que usan la lista.</p>
+ <div class="pgrid">
+  <div><label for="pct">Recargo sobre el precio de lista (%)</label><input class="fi" id="pct" type="number" min="0" step="0.5" inputmode="decimal"></div>
+  <div><label for="ivaIn">IVA (%)</label><input class="fi" id="ivaIn" type="number" min="0" max="100" step="0.5" inputmode="decimal"></div>
+ </div>
+ <p class="note" id="cEj"></p>
+ <h3 style="margin:20px 0 0">Mano de obra</h3>
+ <p class="note">Tu valor hora. Se usa en tus presupuestos nuevos.</p>
+ <div class="pgrid">
+  <div><label for="cfValor">Valor hora</label><input class="fi" id="cfValor" type="number" min="0" step="any" inputmode="decimal"></div>
+  <div><label for="cfMon">Moneda</label><select class="fi" id="cfMon"><option value="ARS">Pesos</option><option value="USD">USD</option></select></div>
+ </div>
+ <p class="note" id="cMsg"></p>
+ <div class="acts"><button class="btn pri" type="submit">Guardar</button></div>
+</form></div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="tBtn" hidden></button></div>
 
 <script>
@@ -290,7 +310,7 @@ const money=v=>enPesos()?ars(v*TC()):usd(v);
 const idOf=c=>String(c).trim().replace(/[^A-Za-z0-9_.~:@+-]/g,'_').replace(/^\.{1,2}$/,'_');
 const parseNum=s=>{s=String(s).trim().replace(/usd/i,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?Math.round(n*100)/100:null};
 const PER=60;
-let BASE=[],EDITS={},CONF={pct:10},items=[],view=[],page=0,cat='',editMode=false,openId=null;
+let BASE=[],EDITS={},CONF={pct:10,iva:21},items=[],view=[],page=0,cat='',editMode=false,openId=null;
 let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true,canFav=false,favMode=false,FAVS={},presMode=false,PRES=[],cur=null,PREF={valor_hora:0,moneda_hora:'ARS'};
 const CFG=window.REPUESTOS_CONFIG||{};
 const BUCKET='fotos';
@@ -335,14 +355,14 @@ function render(){
   filter();
   const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;
   const rows=view.slice(page*PER,page*PER+PER);
-  $('#thFin').textContent=`Precio final (+${fmt.format(+CONF.pct||0).replace(/,00$/,'')}%)${enPesos()?' $':''}`;
+  $('#thFin').textContent=`Precio final${enPesos()?' en pesos':''} + IVA`;$('#thBase').hidden=!editMode;
   document.querySelectorAll('[data-mon]').forEach(b=>b.classList.toggle('on',b.dataset.mon===(enPesos()?'ARS':'USD')));
   $('#thDel').hidden=!editMode;
   $('#tb').innerHTML=rows.map(x=>{
     const cn=CAT_BY[x.k].n,tags=`<div class="meta"><span class="tag">${esc(cn)}</span>${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join('')}${x.edited||x.added?'<span class="tag e">editado</span>':''}${x.info?'<span class="tag m">con info</span>':''}</div>`;
     const name=editMode?`<input class="ed" data-f="d" data-id="${esc(x.id)}" value="${esc(x.d)}" aria-label="Nombre">`:`<button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button>`;
     const price=editMode?`<input class="ed p" data-f="p" data-id="${esc(x.id)}" value="${fmt.format(x.p)}" inputmode="decimal" aria-label="Precio">`:`<span class="pr">${money(x.p)}</span>`;
-    return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${canFav?`<button class="star${FAVS[x.id]?' on':''}" data-fav="${esc(x.id)}" aria-pressed="${!!FAVS[x.id]}" aria-label="${FAVS[x.id]?'Quitar de':'Agregar a'} favoritos" title="Favorito">${FAVS[x.id]?'★':'☆'}</button>`:''}${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td><td class="n p">${price}</td><td class="n f"><span class="pr fin">${money(fin(x.p))}</span></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
+    return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${canFav?`<button class="star${FAVS[x.id]?' on':''}" data-fav="${esc(x.id)}" aria-pressed="${!!FAVS[x.id]}" aria-label="${FAVS[x.id]?'Quitar de':'Agregar a'} favoritos" title="Favorito">${FAVS[x.id]?'★':'☆'}</button>`:''}${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td>${editMode?`<td class="n p">${price}</td>`:''}<td class="n f"><span class="pr fin">${money(fin(x.p))}</span><small class="iv">+ IVA</small></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
   $('#empty').hidden=view.length>0;
   $('#favBtn').textContent='★ Favoritos ('+Object.keys(FAVS).length+')';
   $('#count').textContent=`${view.length.toLocaleString('es-AR')} de ${items.length.toLocaleString('es-AR')} repuestos`;
@@ -363,7 +383,7 @@ function save(id,patch){
 }
 function localSave(){try{localStorage.setItem('rep_edits',JSON.stringify(EDITS));localStorage.setItem('rep_conf',JSON.stringify(CONF))}catch(e){}}
 function localLoad(){try{EDITS=JSON.parse(localStorage.getItem('rep_edits')||'{}')||{};const c=JSON.parse(localStorage.getItem('rep_conf')||'null');if(c&&isFinite(c.pct)){CONF.pct=c.pct;$('#pct').value=c.pct}}catch(e){}}
-function saveConf(){if(!sb){localSave();return}if(!logged)return;sb.from('config').upsert({id:'main',pct:+CONF.pct||0}).then(({error})=>{if(error)toast('No se pudo guardar el porcentaje.')})}
+function saveConf(){if(!sb){localSave();return}if(!logged)return;sb.from('config').upsert({id:'main',pct:+CONF.pct||0,iva:+CONF.iva||0}).then(({error})=>{if(error)toast('No se pudo guardar el porcentaje.')})}
 
 /* ---------- ficha ---------- */
 function autoInfo(x){
@@ -389,7 +409,7 @@ function drawPane(){
   </div>
   ${assets?`<label for="pUrl">O pegá el link de una imagen (en Google: mantené apretada la foto → <b>Copiar dirección de imagen</b>)</label>
   <div class="row"><input class="fi" id="pUrl" type="url" inputmode="url" placeholder="https://…" style="flex:1"><button class="btn pri" id="pUrlOk">Usar</button></div>`:''}
-  <div class="prices"><div><small>Precio de lista</small><strong>${money(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${money(fin(x.p))}</strong></div></div>
+  <div class="prices one"><div class="f"><small>Precio final</small><strong>${money(fin(x.p))} <span style="font-size:16px;font-weight:500">+ IVA</span></strong>${logged?`<small>Lista ${esc(money(x.p))} + ${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}% · con IVA ${esc(money(fin(x.p)*(1+(+CONF.iva||0)/100)))}</small>`:''}</div></div>
   ${x.por?`<p class="note">Última modificación: ${esc(x.por)} · ${esc(new Date(x.t).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}))}</p>`:''}
   <h3 style="margin:20px 0 6px">Información del repuesto</h3>
   <div class="txt" id="pTxt"></div>
@@ -469,6 +489,7 @@ $('#model').addEventListener('change',()=>{page=0;render()});
 $('#sort').addEventListener('change',()=>{page=0;render()});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;cat=b.dataset.k;page=0;chips();render()});
 $('#pager').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(!b||b.disabled)return;page=+b.dataset.pg;render();$('#tbl').scrollIntoView({block:'start'})});
+$('#cfgBtn').addEventListener('click',openCfg);$('#cform').addEventListener('submit',saveCfg);$('#cClose').addEventListener('click',()=>$('#cov').classList.remove('open'));$('#cov').addEventListener('click',e=>{if(e.target.id==='cov')$('#cov').classList.remove('open')});
 $('#presBtn').addEventListener('click',()=>{presMode=!presMode;if(presMode)favMode=false;$('#presBtn').classList.toggle('on',presMode);$('#favBtn').classList.remove('on');render();window.scrollTo({top:0})});
 document.querySelectorAll('[data-mon]').forEach(b=>b.addEventListener('click',()=>{
   if(b.dataset.mon==='ARS'&&!TC()){toast('Todavía no hay cotización del dólar.');return}
@@ -482,7 +503,7 @@ $('#presView').addEventListener('click',e=>{
   else if(t.id==='peCopy'){navigator.clipboard.writeText(presText(cur)).then(()=>toast('Presupuesto copiado. Pegalo en WhatsApp o en un mail.'),()=>toast('No se pudo copiar.'))}
   else if(t.id==='pePrint')presPrint();
   else if(t.id==='peFavs'){favRows().forEach(({f,x})=>{const it=cur.items.find(i=>i.id===x.id);if(!it)cur.items.push({id:x.id,c:x.c,d:x.d,cantidad:f.cantidad,precio:r2(fin(x.p))})});presSave();renderPres();toast('Favoritos agregados.')}
-  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d}});cur.dolar=TC()||cur.dolar;presSave();renderPres();toast('Precios y dólar actualizados.')}
+  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d}});cur.dolar=TC()||cur.dolar;cur.iva=+CONF.iva||0;presSave();renderPres();toast('Precios y dólar actualizados.')}
   else if(t.dataset.ri!=null){cur.items.splice(+t.dataset.ri,1);presSave();presTotals(true)}
   else if(t.id==='peDel'){if(!t.dataset.sure){t.dataset.sure='1';t.textContent='¿Seguro? Tocá de nuevo para eliminar';return}
     sb.from('presupuestos').delete().eq('id',cur.id).then(({error})=>{if(error){toast('No se pudo eliminar.');return}PRES=PRES.filter(p=>p.id!==cur.id);cur=null;renderPres();toast('Presupuesto eliminado.')})}
@@ -493,7 +514,7 @@ $('#presView').addEventListener('input',e=>{
   if(!cur)return;const t=e.target;
   if(t.id==='peCliente'){cur.cliente=t.value;$('#peTitle').textContent='Presupuesto'+(t.value?' · '+t.value:'');presSave()}
   else if(t.id==='peNota'){cur.nota=t.value;presSave()}
-  else if(t.id==='peHoras'||t.id==='peValor'){cur[t.id==='peHoras'?'horas':'valor_hora']=Math.max(0,+t.value||0);presTotals(false);presSave();if(t.id==='peValor')savePref()}
+  else if(t.id==='peHoras'||t.id==='peValor'){cur[t.id==='peHoras'?'horas':'valor_hora']=Math.max(0,+t.value||0);presTotals(false);presSave()}
   else if(t.dataset.qi!=null){const v=Math.round(+t.value);if(v>=1){cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}}
   else if(t.id==='peBuscar'){const w=t.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(!w.length){$('#peSug').hidden=true;return}
@@ -501,7 +522,8 @@ $('#presView').addEventListener('input',e=>{
     $('#peSug').hidden=false;$('#peSug').innerHTML=r.length?r.map(x=>`<button data-add="${esc(x.id)}"><span>${esc(x.d)}</span><span class="code">${esc(x.c)}</span><b class="pr">${esc(money(fin(x.p)))}</b></button>`).join(''):'<p class="note" style="padding:10px">Sin resultados.</p>'}
 });
 $('#presView').addEventListener('change',e=>{if(!cur)return;const t=e.target;
-  if(t.id==='peMon'){cur.moneda_hora=t.value;presTotals(false);presSave();savePref()}
+  if(t.id==='peIva'){cur.con_iva=t.checked;presTotals(false);presSave();return}
+  if(t.id==='peMon'){cur.moneda_hora=t.value;presTotals(false);presSave()}
   else if(t.dataset.qi!=null){const v=Math.max(1,Math.round(+t.value||1));t.value=v;cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}});
 $('#peBuscar').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('#peSug button');if(b)b.click()}if(e.key==='Escape')$('#peSug').hidden=true});
 let pfT;function savePref(){clearTimeout(pfT);pfT=setTimeout(()=>{PREF={valor_hora:+cur.valor_hora||0,moneda_hora:cur.moneda_hora};sb.from('preferencias').upsert({email:me.email,...PREF}).then(({error})=>{if(error)toast('No se pudo guardar tu valor hora.')})},800)}
@@ -514,7 +536,7 @@ $('#favList').addEventListener('input',e=>{const c=e.target.closest('[data-cant]
 $('#favCopy').addEventListener('click',async()=>{const rs=favRows();if(!rs.length)return;
   const lines=rs.map(({f,x})=>`${f.cantidad} x ${x.d} (${x.c}) - ${money(fin(x.p))} c/u = ${money(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
   const tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0);
-  try{await navigator.clipboard.writeText('Repuestos seleccionados\n'+lines.join('\n')+'\nTotal: '+money(tot));toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
+  try{await navigator.clipboard.writeText('Repuestos seleccionados\n'+lines.join('\n')+'\nTotal: '+money(tot)+' + IVA');toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
 $('#editBtn').addEventListener('click',()=>{editMode=!editMode;$('#editBtn').classList.toggle('on',editMode);$('#editBtn').setAttribute('aria-pressed',editMode);$('#editBtn').textContent=editMode?'Terminar edición':'Modo edición';render()});
 $('#tb').addEventListener('click',e=>{
   const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}
@@ -565,10 +587,11 @@ $('#addBtn').addEventListener('click',()=>{
   const code='NUEVO-'+Date.now().toString(36).toUpperCase(),id=idOf(code);
   save(id,{id,c:code,d:'Nuevo repuesto',p:0,added:true}).then(()=>{});openPane(id);setTimeout(()=>{$('#pD')&&$('#pD').select()},60);
 });
-let pt;$('#pct').addEventListener('input',()=>{const v=parseFloat($('#pct').value);if(!isFinite(v)||v<0)return;CONF.pct=v;render();if(openId)drawPane();clearTimeout(pt);pt=setTimeout(saveConf,700)});
+function cfgEj(){const v=parseFloat($('#pct').value)||0,iv=parseFloat($('#ivaIn').value)||0,f=100*(1+v/100);$('#cEj').textContent=`Ejemplo: USD 100 de lista → USD ${fmt.format(f)} + IVA → USD ${fmt.format(f*(1+iv/100))} con IVA.`}
+$('#pct').addEventListener('input',cfgEj);$('#ivaIn').addEventListener('input',cfgEj);
 $('#csvBtn').addEventListener('click',async()=>{
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"',pc=+CONF.pct||0;
-  const lines=[['Descripción','Código','Precio USD',`Precio final USD (+${pc}%)`,'Rubro','Información'].map(q).join(';')].concat(view.map(x=>[x.d,x.c,fmt.format(x.p),fmt.format(fin(x.p)),CAT_BY[x.k].n,x.info||''].map(q).join(';')));
+  const tc=TC();const lines=[['Descripción','Código','Precio final USD + IVA'].concat(tc?['Precio final $ + IVA (dólar venta '+fmt.format(tc)+')']:[]).concat(['Rubro','Información']).map(q).join(';')].concat(view.map(x=>[x.d,x.c,fmt.format(fin(x.p))].concat(tc?[fmt.format(fin(x.p)*tc)]:[]).concat([CAT_BY[x.k].n,x.info||'']).map(q).join(';')));
   const csv='﻿'+lines.join('\r\n'),name='lista_precios_repuestos.csv';
   try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}catch(e){}
   try{await navigator.clipboard.writeText(csv);toast('CSV copiado al portapapeles ('+view.length+' filas).')}catch(e){toast('No se pudo exportar.')}
@@ -579,7 +602,7 @@ $('#tBtn').addEventListener('click',()=>{if(tcb)tcb();$('#toast').classList.remo
 /* ---------- arranque ---------- */
 fetch('data.json').then(r=>r.json()).then(rows=>{
   BASE=rows.map(r=>({id:idOf(r.c),c:r.c,d:r.d,p:r.p}));
-  $('#sub').textContent=`Vigente desde el 18/11/2026 hasta nuevo aviso · ${BASE.length.toLocaleString('es-AR')} productos · precios en USD`;
+  $('#sub').textContent=`Vigente desde el 18/11/2026 hasta nuevo aviso · ${BASE.length.toLocaleString('es-AR')} productos · precios finales + IVA`;
   full();
   const hid=decodeURIComponent((location.hash||'').slice(1));if(hid&&items.some(y=>y.id===hid))openPane(hid);
 }).catch(()=>{$('#count').textContent='No se pudo cargar la lista.'});
@@ -608,9 +631,9 @@ async function updFav(id,patch){
 function favRows(){return Object.keys(FAVS).map(id=>({f:FAVS[id],x:items.find(y=>y.id===id)})).filter(r=>r.x).sort((a,b)=>String(a.f.creado).localeCompare(String(b.f.creado)))}
 function renderFavSum(){
   const rs=favRows(),tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0),u=rs.reduce((s,r)=>s+r.f.cantidad,0);
-  $('#favSum').textContent=rs.length?`${rs.length} repuestos · ${fmt.format(u).replace(/,00$/,'')} unidades · Total con recargo: ${money(tot)}`:'';
+  $('#favSum').textContent=rs.length?`${rs.length} repuestos · ${fmt.format(u).replace(/,00$/,'')} unidades · Total: ${money(tot)} + IVA`:'';
   rs.forEach(r=>{const el=document.querySelector(`[data-sub="${CSS.escape(r.x.id)}"]`);if(el)el.textContent=money(fin(r.x.p)*r.f.cantidad)});
-  const t=$('#favTot');if(t)t.innerHTML=`<span>Total con recargo</span><strong>${money(tot)}</strong>`;
+  const t=$('#favTot');if(t)t.innerHTML=`<span>Total + IVA</span><strong>${money(tot)}</strong>`;
 }
 function renderFavs(){
   const rs=favRows();
@@ -645,7 +668,8 @@ function presCalc(p){
   const rep=(p.items||[]).reduce((s,i)=>s+i.precio*i.cantidad,0);
   const mo=(+p.horas||0)*(+p.valor_hora||0);
   const moUSD=p.moneda_hora==='USD'?mo:(dol?mo/dol:0), moARS=p.moneda_hora==='ARS'?mo:mo*dol;
-  return {dol,rep,repARS:rep*dol,mo,moUSD,moARS,totUSD:rep+moUSD,totARS:rep*dol+moARS};
+  const sub=rep+moUSD,subARS=rep*dol+moARS,ivp=p.con_iva?(+p.iva||0)/100:0;
+  return {dol,rep,repARS:rep*dol,mo,moUSD,moARS,subUSD:sub,subARS,ivaUSD:sub*ivp,ivaARS:subARS*ivp,totUSD:sub*(1+ivp),totARS:subARS*(1+ivp)};
 }
 function presAdd(x,cant){
   if(!cur)return;
@@ -657,13 +681,13 @@ let psT=null,psBusy=Promise.resolve();
 function presSave(now){
   if(!cur)return;$('#peEstado').textContent='Guardando…';clearTimeout(psT);const c=cur;
   psT=setTimeout(()=>{psBusy=psBusy.then(async()=>{
-    const body={cliente:c.cliente||null,nota:c.nota||null,items:c.items,horas:+c.horas||0,valor_hora:+c.valor_hora||0,moneda_hora:c.moneda_hora,dolar:c.dolar,actualizado:new Date().toISOString()};
+    const body={cliente:c.cliente||null,nota:c.nota||null,items:c.items,horas:+c.horas||0,valor_hora:+c.valor_hora||0,moneda_hora:c.moneda_hora,dolar:c.dolar,con_iva:!!c.con_iva,iva:+c.iva||0,actualizado:new Date().toISOString()};
     const {error}=await sb.from('presupuestos').update(body).eq('id',c.id);
     if(cur===c)$('#peEstado').textContent=error?'No se pudo guardar: '+error.message:'Guardado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
   })},now?0:700);
 }
 async function presNew(){
-  const body={email:me.email,items:[],horas:0,valor_hora:PREF.valor_hora,moneda_hora:PREF.moneda_hora,dolar:TC()||null};
+  const body={email:me.email,items:[],horas:0,valor_hora:PREF.valor_hora,moneda_hora:PREF.moneda_hora,dolar:TC()||null,iva:+CONF.iva||0,con_iva:false};
   const {data,error}=await sb.from('presupuestos').insert(body).select().single();
   if(error){toast('No se pudo crear: '+error.message);return}
   PRES.unshift(data);cur=data;renderPres();setTimeout(()=>$('#peCliente').focus(),50);
@@ -674,7 +698,8 @@ function presText(p){
   (p.items||[]).forEach(i=>L.push(`${i.cantidad} x ${i.d} (${i.c}) - ${usd(i.precio)} c/u = ${usd(i.precio*i.cantidad)}${k.dol?' / '+ars(i.precio*i.cantidad*k.dol):''}`));
   L.push('Repuestos: '+usd(k.rep)+(k.dol?' / '+ars(k.repARS):''));
   if(k.mo)L.push(`Mano de obra: ${fmt.format(+p.horas).replace(/,00$/,'')} h x ${p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora)} = ${p.moneda_hora==='USD'?usd(k.mo):ars(k.mo)}`);
-  L.push('TOTAL: '+(k.dol?ars(k.totARS)+' (≈ '+usd(k.totUSD)+')':usd(k.totUSD)));
+  if(p.con_iva){L.push('Subtotal: '+(k.dol?ars(k.subARS):usd(k.subUSD)));L.push('IVA '+fmt.format(+p.iva).replace(/,00$/,'')+'%: '+(k.dol?ars(k.ivaARS):usd(k.ivaUSD)))}
+  L.push((p.con_iva?'TOTAL CON IVA: ':'TOTAL + IVA: ')+(k.dol?ars(k.totARS)+' (≈ '+usd(k.totUSD)+')':usd(k.totUSD)));
   if(k.dol)L.push('Dólar BNA venta: '+ars(k.dol));
   if(p.nota)L.push('Nota: '+p.nota);
   return L.join('\n');
@@ -703,9 +728,12 @@ function presTotals(rows){
     <td class="n pr" data-st="${n}"></td><td><button class="del" data-ri="${n}" aria-label="Quitar">×</button></td></tr>`).join(''):'<tr><td colspan="5" class="note">Agregá repuestos con el buscador de arriba o desde la ficha de cada repuesto.</td></tr>';
   cur.items.forEach((i,n)=>{const el=document.querySelector(`[data-st="${n}"]`);if(el)el.innerHTML=esc(usd(i.precio*i.cantidad))+(k.dol?`<small>${esc(ars(i.precio*i.cantidad*k.dol))}</small>`:'')});
   $('#peMoTot').textContent=cur.moneda_hora==='USD'?usd(k.mo):ars(k.mo);
-  $('#peTot').innerHTML=`<div><span>Repuestos</span><span>${esc(usd(k.rep))}${k.dol?' · '+esc(ars(k.repARS)):''}</span></div>
-   <div><span>Mano de obra</span><span>${esc(usd(k.moUSD))}${k.dol?' · '+esc(ars(k.moARS)):''}</span></div>
-   <div class="big2"><span>Total</span><span>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</span></div>
+  const both=(u,a)=>esc(usd(u))+(k.dol?' · '+esc(ars(a)):'');
+  $('#peTot').innerHTML=`<div><span>Repuestos</span><span>${both(k.rep,k.repARS)}</span></div>
+   <div><span>Mano de obra</span><span>${both(k.moUSD,k.moARS)}</span></div>
+   <div><span>Subtotal sin IVA</span><span>${both(k.subUSD,k.subARS)}</span></div>
+   <div><label style="margin:0;display:flex;gap:8px;align-items:center;color:inherit;font-size:16px"><input type="checkbox" id="peIva" ${cur.con_iva?'checked':''} style="width:22px;height:22px"> Agregar IVA (${esc(fmt.format(+cur.iva||0).replace(/,00$/,''))}%)</label><span>${cur.con_iva?both(k.ivaUSD,k.ivaARS):'—'}</span></div>
+   <div class="big2"><span>Total${cur.con_iva?' con IVA':' + IVA'}</span><span>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</span></div>
    ${k.dol?`<div class="note"><span>Equivale a ${esc(usd(k.totUSD))} · dólar BNA venta ${esc(ars(k.dol))}</span></div>`:'<div class="note">Sin cotización del dólar: total solo en USD.</div>'}`;
 }
 function presPrint(){
@@ -715,9 +743,24 @@ function presPrint(){
    <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><thead><tr><th align="left">Repuesto</th><th>Código</th><th align="right">Cant.</th><th align="right">Unitario</th><th align="right">Subtotal</th></tr></thead><tbody>
    ${p.items.map(i=>`<tr><td>${esc(i.d)}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(k.dol?ars(i.precio*k.dol):usd(i.precio))}</td><td align="right">${esc(k.dol?ars(i.precio*i.cantidad*k.dol):usd(i.precio*i.cantidad))}</td></tr>`).join('')}
    ${k.mo?`<tr><td colspan="2">Mano de obra</td><td align="right">${esc(fmt.format(+p.horas).replace(/,00$/,''))} h</td><td align="right">${esc(p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora))}</td><td align="right">${esc(k.dol?ars(k.moARS):usd(k.moUSD))}</td></tr>`:''}
-   <tr><td colspan="4" align="right"><b>TOTAL</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
+   ${p.con_iva?`<tr><td colspan="4" align="right">Subtotal</td><td align="right">${esc(k.dol?ars(k.subARS):usd(k.subUSD))}</td></tr><tr><td colspan="4" align="right">IVA ${esc(fmt.format(+p.iva).replace(/,00$/,''))}%</td><td align="right">${esc(k.dol?ars(k.ivaARS):usd(k.ivaUSD))}</td></tr>`:''}
+   <tr><td colspan="4" align="right"><b>${p.con_iva?'TOTAL CON IVA':'TOTAL + IVA'}</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
    ${k.dol?`<p>Equivale a ${esc(usd(k.totUSD))}. Dólar oficial Banco Nación venta: ${esc(ars(k.dol))}.</p>`:''}${p.nota?`<p>${esc(p.nota)}</p>`:''}`;
   window.print();
+}
+function openCfg(){
+  $('#pct').value=CONF.pct;$('#ivaIn').value=CONF.iva;$('#pct').disabled=!logged;$('#ivaIn').disabled=!logged;
+  $('#cGlobalNote').textContent=logged?'Valen para todos los que usan la lista.':'Valen para todos; solo los editores los pueden cambiar.';
+  $('#cfValor').value=PREF.valor_hora||'';$('#cfMon').value=PREF.moneda_hora||'ARS';$('#cMsg').textContent='';cfgEj();$('#cov').classList.add('open');
+}
+async function saveCfg(e){
+  e.preventDefault();$('#cMsg').textContent='Guardando…';let err='';
+  if(logged){const v=parseFloat($('#pct').value),iv=parseFloat($('#ivaIn').value);
+    if(!(v>=0)||!(iv>=0&&iv<=100)){$('#cMsg').textContent='Revisá el recargo y el IVA.';return}
+    if(v!==CONF.pct||iv!==CONF.iva){CONF.pct=v;CONF.iva=iv;const {error}=await sb.from('config').upsert({id:'main',pct:v,iva:iv});if(error)err='No se pudo guardar el recargo/IVA. '}}
+  const vh=Math.max(0,parseFloat($('#cfValor').value)||0);PREF={valor_hora:vh,moneda_hora:$('#cfMon').value};
+  const {error:e2}=await sb.from('preferencias').upsert({email:me.email,...PREF});if(e2)err+='No se pudo guardar el valor hora.';
+  $('#cMsg').textContent=err||'Guardado.';render();if(openId)drawPane();if(presMode)renderPres();if(!err)setTimeout(()=>$('#cov').classList.remove('open'),600);
 }
 async function setSession(s){
   session=s||null;me=null;
@@ -725,7 +768,7 @@ async function setSession(s){
   logged=!!(me&&me.activo&&me.rol!=='consulta');assets=logged?{}:null;
   canFav=!!(me&&me.activo&&(me.favoritos||me.rol==='admin'));
   await loadFavs();$('#favBtn').hidden=!canFav;if(!canFav&&favMode){favMode=false}
-  const act=!!(me&&me.activo);$('#presBtn').hidden=!act;if(!act){presMode=false;cur=null;PRES=[]}else{await loadPres()}
+  const act=!!(me&&me.activo);$('#presBtn').hidden=!act;$('#cfgBtn').hidden=!act;if(!act){presMode=false;cur=null;PRES=[]}else{await loadPres()}
   const isAdm=logged&&me.rol==='admin';
   $('#loginBtn').hidden=false;$('#loginBtn').textContent=!session?'Ingresar':isAdm?'Panel admin':'Mi cuenta';
   ['#editBtn','#addBtn'].forEach(s=>$(s).hidden=!logged);$('#pct').disabled=!logged;
@@ -793,8 +836,8 @@ async function loadAll(){
   const m={};let from=0;
   for(;;){const {data,error}=await sb.from('edits').select('id,data').range(from,from+999);if(error)throw error;data.forEach(r=>{if(r.data)m[r.id]=Object.assign({},r.data,{id:r.id})});if(data.length<1000)break;from+=1000}
   EDITS=m;
-  const {data:c}=await sb.from('config').select('pct').eq('id','main').maybeSingle();
-  if(c&&isFinite(c.pct)){CONF.pct=+c.pct;if(document.activeElement!==$('#pct'))$('#pct').value=c.pct}
+  const {data:c}=await sb.from('config').select('pct,iva').eq('id','main').maybeSingle();
+  if(c&&isFinite(c.pct)){CONF.pct=+c.pct;if(c.iva!=null)CONF.iva=+c.iva}
   if(BASE.length)full();
 }
 if(CFG.url&&CFG.anonKey&&window.supabase){
@@ -805,7 +848,7 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
   sb.channel('cambios').on('postgres_changes',{event:'*',schema:'public',table:'edits'},p=>{
     if(p.eventType==='DELETE'){delete EDITS[p.old.id]}else if(p.new&&p.new.data){EDITS[p.new.id]=Object.assign({},p.new.data,{id:p.new.id})}
     if(BASE.length)full();
-  }).on('postgres_changes',{event:'*',schema:'public',table:'config'},p=>{if(p.new&&isFinite(p.new.pct)){CONF.pct=+p.new.pct;if(document.activeElement!==$('#pct'))$('#pct').value=p.new.pct;render();if(openId)drawPane()}}).subscribe();
+  }).on('postgres_changes',{event:'*',schema:'public',table:'config'},p=>{if(p.new&&isFinite(p.new.pct)){CONF.pct=+p.new.pct;if(p.new.iva!=null)CONF.iva=+p.new.iva;render();if(openId)drawPane()}}).subscribe();
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadAll().catch(()=>{})});
   sb.channel('usuarios').on('postgres_changes',{event:'*',schema:'public',table:'editores'},()=>{if(session)setSession(session)}).subscribe();
   sb.auth.getSession().then(({data})=>setSession(data&&data.session));
@@ -815,7 +858,7 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
   $('#lov').addEventListener('click',e=>{if(e.target.id==='lov')$('#lov').classList.remove('open')});
   $('#aClose').addEventListener('click',()=>$('#aov').classList.remove('open'));
   $('#aov').addEventListener('click',e=>{if(e.target.id==='aov')$('#aov').classList.remove('open')});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#lov').classList.remove('open');$('#aov').classList.remove('open')}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#lov').classList.remove('open');$('#aov').classList.remove('open');$('#cov').classList.remove('open')}});
   $('#lform').addEventListener('submit',async e=>{e.preventDefault();
     const email=$('#lMail').value.trim(),password=$('#lPass').value;
     if(!hayAdmin){$('#lErr').textContent='Creando la cuenta…';try{await fn({accion:'crear_admin_inicial',email,password,nombre:$('#lNombre').value.trim()})}catch(err){$('#lErr').textContent=err.message;return}}

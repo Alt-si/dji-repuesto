@@ -48,6 +48,14 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 - El administrador lo habilita por usuario en el panel (casilla **Favoritos**). Los administradores lo tienen siempre.
 - Permiso **Consulta**: ve la lista y usa favoritos, pero no puede cambiar precios ni fotos.
 
+### Configurar
+
+Botón **Configurar** (usuarios con sesión):
+- **Recargo sobre el precio de lista (%)** e **IVA (%)**: valen para todos; solo editores y administradores los cambian.
+- **Valor hora de mano de obra** (pesos o USD): es de cada usuario y se usa en sus presupuestos nuevos.
+
+En la lista se ve solo el **precio final** (lista + recargo), marcado **+ IVA**. El precio de lista aparece únicamente en Modo edición. En cada presupuesto se tilda **Agregar IVA** si corresponde.
+
 ### Dólar y precios en pesos
 
 - En la portada se muestra el **dólar oficial del Banco Nación** (billete), venta y compra, con la fecha del banco.
