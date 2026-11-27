@@ -220,6 +220,7 @@ let BASE=[],EDITS={},CONF={pct:10},items=[],view=[],page=0,cat='',editMode=false
 let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true;
 const CFG=window.REPUESTOS_CONFIG||{};
 const BUCKET='fotos';
+const movil=matchMedia('(pointer:coarse)').matches;
 const imgUrl=p=>p?(sb?sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl:''):'';
 
 /* ---------- datos ---------- */
@@ -297,10 +298,10 @@ function drawPane(){
   <div class="big" id="drop">${x.img&&sb?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
   <div class="acts">
    <a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="${g}" target="_blank" rel="noopener">Buscar foto en Google (por código) ↗</a>
-   ${assets?`<label class="btn" style="margin:0;display:inline-flex;align-items:center;color:inherit;font-size:16px">Subir foto<input type="file" id="pFile" accept="image/*" hidden></label>`:''}
+   ${assets?`<label class="btn pri" style="margin:0;display:inline-flex;align-items:center;font-size:16px">Subir foto<input type="file" id="pFile" accept="image/*" hidden></label>`:(sb?'<button class="btn pri" id="pLogin">Subir foto</button>':'')}
    ${x.img&&assets?'<button class="btn" id="pNoImg">Quitar foto</button>':''}
   </div>
-  <p class="note">${assets?'Abrí “Buscar foto en Google”, hacé clic derecho sobre la imagen → <b>Copiar imagen</b>, volvé acá y pegala con Ctrl+V. Queda guardada en este producto.':(sb?'Para cargar fotos tenés que ingresar con tu usuario.':'Para cargar fotos hace falta conectar la lista a Supabase.')}</p>
+  <p class="note">${assets?(movil?'1) Tocá “Buscar foto en Google”. 2) Mantené apretada la foto → <b>Descargar imagen</b>. 3) Volvé acá, tocá <b>Subir foto</b> y elegila de la galería (o sacale una foto al repuesto).':'Abrí “Buscar foto en Google”, hacé clic derecho sobre la imagen → <b>Copiar imagen</b>, volvé acá y pegala con Ctrl+V. También podés arrastrarla al recuadro o usar <b>Subir foto</b>.')+' La foto la ven todos.':(sb?'Para subir fotos tenés que ingresar con tu usuario.':'Para subir fotos hace falta conectar la lista a Supabase.')}</p>
   <div class="prices"><div><small>Precio de lista</small><strong>${usd(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${usd(fin(x.p))}</strong></div></div>
   ${x.por?`<p class="note">Última modificación: ${esc(x.por)} · ${esc(new Date(x.t).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}))}</p>`:''}
   <h3 style="margin:20px 0 6px">Información del repuesto</h3>
@@ -391,6 +392,7 @@ $('#pane').addEventListener('click',e=>{
   else if(t.id==='pCancelInfo')$('#pInfoEd').hidden=true;
   else if(t.id==='pSaveInfo'){save(x.id,{info:$('#pInfo').value.trim()||null});toast('Información guardada.')}
   else if(t.id==='pNoImg')save(x.id,{img:null});
+  else if(t.id==='pLogin'){closePane();openLogin()}
   else if(t.id==='pDel')del(x.id);
   else if(t.id==='pRestore')save(x.id,{d:null,p:null});
   else if(t.id==='pSave'){
