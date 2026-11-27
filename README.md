@@ -70,9 +70,9 @@ En la lista se ve solo el **precio final** (lista + recargo), marcado **+ IVA**.
 
 - Botón **Presupuestos** (cualquier usuario habilitado). Cada usuario ve solo los suyos.
 - Cliente, nota, repuestos (buscador por código o nombre, desde la ficha con "+ Agregar al presupuesto", o "Agregar mis favoritos") con cantidad.
-- **Mano de obra**: horas × valor hora, en pesos o en dólares. El valor hora queda guardado como preferencia del usuario.
+- **Mano de obra**: en el presupuesto solo se cargan las horas; el valor hora está en Configurar. En el detalle, la copia y el PDF sale solo el total de mano de obra.
 - Totales en USD y en pesos con el dólar venta del momento; **Actualizar precios y dólar** los vuelve a tomar de la lista.
-- **Copiar** (para WhatsApp o mail) e **Imprimir / PDF**. Se guarda solo mientras se escribe.
+- **Copiar** (para WhatsApp o mail) e **Imprimir / PDF**: el PDF lleva arriba el logo, el nombre y los datos de la empresa de cada usuario (se cargan en Configurar → Tu empresa) y no incluye nada de la página de la lista. Se guarda solo mientras se escribe.
 
 ### Base de datos
 

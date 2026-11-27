@@ -89,6 +89,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .txt{white-space:pre-wrap;background:var(--soft);border-radius:12px;padding:14px;line-height:1.55}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
  .dlg{height:auto;bottom:auto;top:8vh;right:50%;transform:translateX(50%);width:min(440px,94%);border-radius:16px;max-height:86vh}
+.logoPrev{width:140px;height:70px;border:1px dashed var(--line);border-radius:10px;display:grid;place-items:center;font-size:13px;color:var(--mut);background:#fff;overflow:hidden}.logoPrev img{max-width:100%;max-height:100%;object-fit:contain}
 .hist{display:grid;gap:6px;margin-top:12px}.hist div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}.hist .off{opacity:.6;text-decoration:line-through}
 .ulist{display:grid;gap:8px;margin-top:10px}
 .urow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
@@ -126,7 +127,8 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .ptot div{display:flex;justify-content:space-between;gap:12px}.ptot .big2{font-size:22px;font-weight:800}
 .plist{display:grid;gap:8px;margin-top:12px}.pcard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;background:var(--bg);text-align:left;width:100%}
 .pcard:hover{background:var(--soft)}
-@media print{body>*:not(#pp){display:none!important}#pp{display:block!important}}
+#pp{display:none}
+@media print{@page{margin:0}html,body{background:#fff!important}body>*:not(#pp){display:none!important}#pp{display:block!important;padding:14mm 14mm;font:13px/1.45 Archivo,Arial,sans-serif;color:#000}#pp table{page-break-inside:auto}#pp tr{page-break-inside:avoid}#pp th,#pp td{border:1px solid #888!important;color:#000!important;font:inherit;padding:6px 8px;background:none}#pp thead th{background:#eee!important;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}#pp tr:hover td{background:none}}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;z-index:40;display:none;gap:12px;align-items:center;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer}
 .note{font-size:13px;color:var(--mut)}
@@ -214,11 +216,9 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
    <h3 style="margin:22px 0 6px">Mano de obra</h3>
    <div class="row mo">
     <label>Horas<input class="fi" id="peHoras" type="number" min="0" step="0.5" inputmode="decimal"></label>
-    <label>Valor hora<input class="fi" id="peValor" type="number" min="0" step="any" inputmode="decimal"></label>
-    <label>Moneda<select class="fi" id="peMon"><option value="ARS">Pesos</option><option value="USD">USD</option></select></label>
     <div class="moSub"><small>Mano de obra</small><b id="peMoTot"></b></div>
    </div>
-   <p class="note">El valor hora viene de <b>Configurar</b>; acá lo podés cambiar solo para este presupuesto.</p>
+   <p class="note" id="peVhNote"></p>
    <div class="ptot" id="peTot"></div>
    <div class="acts"><button class="btn" id="peDel">Eliminar presupuesto</button></div>
   </div>
@@ -305,6 +305,13 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <div><label for="cfValor">Valor hora</label><input class="fi" id="cfValor" type="number" min="0" step="any" inputmode="decimal"></div>
   <div><label for="cfMon">Moneda</label><select class="fi" id="cfMon"><option value="ARS">Pesos</option><option value="USD">USD</option></select></div>
  </div>
+ <h3 style="margin:20px 0 0">Tu empresa (sale en tus presupuestos)</h3>
+ <label for="cfEmp">Nombre de la empresa</label><input class="fi" id="cfEmp" maxlength="120" autocomplete="organization">
+ <label for="cfDatos">Datos (dirección, teléfono, CUIT…)</label><textarea class="fi" id="cfDatos" maxlength="400" style="min-height:80px"></textarea>
+ <label>Logo</label>
+ <div class="row" style="align-items:center"><div id="cfLogoPrev" class="logoPrev">Sin logo</div>
+  <label class="btn" style="margin:0;display:inline-flex;align-items:center;font-size:16px;color:inherit">Subir logo<input type="file" id="cfLogo" accept="image/*" hidden></label>
+  <button type="button" class="btn" id="cfLogoDel">Quitar</button></div>
  <p class="note" id="cMsg"></p>
  <div class="acts"><button class="btn pri" type="submit">Guardar</button></div>
 </form></div>
@@ -507,6 +514,8 @@ $('#sort').addEventListener('change',()=>{page=0;render()});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;cat=b.dataset.k;page=0;chips();render()});
 $('#pager').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(!b||b.disabled)return;page=+b.dataset.pg;render();$('#tbl').scrollIntoView({block:'start'})});
 $('#cfgBtn').addEventListener('click',openCfg);
+$('#cfLogo').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{cfLogo=await logoData(f);drawLogo();$('#cMsg').textContent='Logo listo: tocá Guardar.'}catch(er){$('#cMsg').textContent=er.message}e.target.value=''});
+$('#cfLogoDel').addEventListener('click',()=>{cfLogo=null;drawLogo();$('#cMsg').textContent='Tocá Guardar para quitar el logo.'});
 ['#aRubro','#aEquipo'].forEach(s=>$(s).addEventListener('change',aumPrev));['#aTexto','#aPct'].forEach(s=>$(s).addEventListener('input',aumPrev));
 $('#aGo').addEventListener('click',aumApply);$('#aHist').addEventListener('click',e=>{const b=e.target.closest('[data-undo]');if(b)aumUndo(b.dataset.undo,b)});$('#cform').addEventListener('submit',saveCfg);$('#cClose').addEventListener('click',()=>$('#cov').classList.remove('open'));$('#cov').addEventListener('click',e=>{if(e.target.id==='cov')$('#cov').classList.remove('open')});
 $('#presBtn').addEventListener('click',()=>{presMode=!presMode;if(presMode)favMode=false;$('#presBtn').classList.toggle('on',presMode);$('#favBtn').classList.remove('on');render();window.scrollTo({top:0})});
@@ -522,7 +531,7 @@ $('#presView').addEventListener('click',e=>{
   else if(t.id==='peCopy'){navigator.clipboard.writeText(presText(cur)).then(()=>toast('Presupuesto copiado. Pegalo en WhatsApp o en un mail.'),()=>toast('No se pudo copiar.'))}
   else if(t.id==='pePrint')presPrint();
   else if(t.id==='peFavs'){favRows().forEach(({f,x})=>{const it=cur.items.find(i=>i.id===x.id);if(!it)cur.items.push({id:x.id,c:x.c,d:x.d,a:x.alias||null,cantidad:f.cantidad,precio:r2(fin(x.p))})});presSave();renderPres();toast('Favoritos agregados.')}
-  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d;i.a=x.alias||null}});cur.dolar=TC()||cur.dolar;cur.iva=+CONF.iva||0;presSave();renderPres();toast('Precios y dólar actualizados.')}
+  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d;i.a=x.alias||null}});cur.dolar=TC()||cur.dolar;cur.iva=+CONF.iva||0;cur.valor_hora=PREF.valor_hora;cur.moneda_hora=PREF.moneda_hora;presSave();renderPres();toast('Precios y dólar actualizados.')}
   else if(t.dataset.ri!=null){cur.items.splice(+t.dataset.ri,1);presSave();presTotals(true)}
   else if(t.id==='peDel'){if(!t.dataset.sure){t.dataset.sure='1';t.textContent='¿Seguro? Tocá de nuevo para eliminar';return}
     sb.from('presupuestos').delete().eq('id',cur.id).then(({error})=>{if(error){toast('No se pudo eliminar.');return}PRES=PRES.filter(p=>p.id!==cur.id);cur=null;renderPres();toast('Presupuesto eliminado.')})}
@@ -533,7 +542,7 @@ $('#presView').addEventListener('input',e=>{
   if(!cur)return;const t=e.target;
   if(t.id==='peCliente'){cur.cliente=t.value;$('#peTitle').textContent='Presupuesto'+(t.value?' · '+t.value:'');presSave()}
   else if(t.id==='peNota'){cur.nota=t.value;presSave()}
-  else if(t.id==='peHoras'||t.id==='peValor'){cur[t.id==='peHoras'?'horas':'valor_hora']=Math.max(0,+t.value||0);presTotals(false);presSave()}
+  else if(t.id==='peHoras'){cur.horas=Math.max(0,+t.value||0);cur.valor_hora=PREF.valor_hora;cur.moneda_hora=PREF.moneda_hora;presTotals(false);presSave()}
   else if(t.dataset.qi!=null){const v=Math.round(+t.value);if(v>=1){cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}}
   else if(t.id==='peBuscar'){const w=t.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(!w.length){$('#peSug').hidden=true;return}
@@ -542,10 +551,8 @@ $('#presView').addEventListener('input',e=>{
 });
 $('#presView').addEventListener('change',e=>{if(!cur)return;const t=e.target;
   if(t.id==='peIva'){cur.con_iva=t.checked;presTotals(false);presSave();return}
-  if(t.id==='peMon'){cur.moneda_hora=t.value;presTotals(false);presSave()}
   else if(t.dataset.qi!=null){const v=Math.max(1,Math.round(+t.value||1));t.value=v;cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}});
 $('#peBuscar').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('#peSug button');if(b)b.click()}if(e.key==='Escape')$('#peSug').hidden=true});
-let pfT;function savePref(){clearTimeout(pfT);pfT=setTimeout(()=>{PREF={valor_hora:+cur.valor_hora||0,moneda_hora:cur.moneda_hora};sb.from('preferencias').upsert({email:me.email,...PREF}).then(({error})=>{if(error)toast('No se pudo guardar tu valor hora.')})},800)}
 $('#favBtn').addEventListener('click',()=>{presMode=false;$('#presBtn').classList.remove('on');favMode=!favMode;$('#favBtn').classList.toggle('on',favMode);$('#favBtn').setAttribute('aria-pressed',favMode);render();window.scrollTo({top:0})});
 $('#favExit').addEventListener('click',()=>$('#favBtn').click());
 $('#favList').addEventListener('click',e=>{const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}const o=e.target.closest('[data-open]');if(o)openPane(o.dataset.open)});
@@ -682,7 +689,7 @@ async function loadDolar(){
 const r2=v=>Math.round(v*100)/100;
 async function loadPres(){
   const {data}=await sb.from('presupuestos').select('*').order('actualizado',{ascending:false});PRES=data||[];
-  const {data:pf}=await sb.from('preferencias').select('valor_hora,moneda_hora').eq('email',me.email).maybeSingle();if(pf)PREF={valor_hora:+pf.valor_hora||0,moneda_hora:pf.moneda_hora||'ARS'};
+  const {data:pf}=await sb.from('preferencias').select('valor_hora,moneda_hora,empresa,datos,logo').eq('email',me.email).maybeSingle();if(pf)PREF={valor_hora:+pf.valor_hora||0,moneda_hora:pf.moneda_hora||'ARS',empresa:pf.empresa||null,datos:pf.datos||null,logo:pf.logo||null};
   if(cur)cur=PRES.find(p=>p.id===cur.id)||null;
 }
 function presCalc(p){
@@ -716,10 +723,10 @@ async function presNew(){
 }
 function presText(p){
   const k=presCalc(p),L=[];
-  L.push('PRESUPUESTO'+(p.cliente?' - '+p.cliente:''));L.push('Fecha: '+new Date(p.actualizado||Date.now()).toLocaleDateString('es-AR'));
+  if(PREF.empresa)L.push(PREF.empresa);L.push('PRESUPUESTO'+(p.cliente?' - '+p.cliente:''));L.push('Fecha: '+new Date(p.actualizado||Date.now()).toLocaleDateString('es-AR'));
   (p.items||[]).forEach(i=>L.push(`${i.cantidad} x ${i.d}${i.a?' ['+i.a+']':''} (${i.c}) - ${usd(i.precio)} c/u = ${usd(i.precio*i.cantidad)}${k.dol?' / '+ars(i.precio*i.cantidad*k.dol):''}`));
   L.push('Repuestos: '+usd(k.rep)+(k.dol?' / '+ars(k.repARS):''));
-  if(k.mo)L.push(`Mano de obra: ${fmt.format(+p.horas).replace(/,00$/,'')} h x ${p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora)} = ${p.moneda_hora==='USD'?usd(k.mo):ars(k.mo)}`);
+  if(k.mo)L.push('Mano de obra: '+(k.dol?ars(k.moARS):usd(k.moUSD)));
   if(p.con_iva){L.push('Subtotal: '+(k.dol?ars(k.subARS):usd(k.subUSD)));L.push('IVA '+fmt.format(+p.iva).replace(/,00$/,'')+'%: '+(k.dol?ars(k.ivaARS):usd(k.ivaUSD)))}
   L.push((p.con_iva?'TOTAL CON IVA: ':'TOTAL + IVA: ')+(k.dol?ars(k.totARS)+' (≈ '+usd(k.totUSD)+')':usd(k.totUSD)));
   if(k.dol)L.push('Dólar BNA venta: '+ars(k.dol));
@@ -730,7 +737,7 @@ function renderPres(){
   if(!cur){
     $('#presEd').hidden=true;$('#presList').hidden=false;
     $('#presList').innerHTML=`<div class="favhead"><div><h2 style="margin:0">Mis presupuestos</h2><p class="note">Elegí repuestos, cantidades y horas de mano de obra. Quedan guardados.</p></div><div class="acts" style="margin:0"><button class="btn pri" id="pNew">+ Nuevo presupuesto</button><button class="btn" id="pExit">Volver a la lista</button></div></div>`+
-     (PRES.length?'<div class="plist">'+PRES.map(p=>{const k=presCalc(p);return `<button class="pcard" data-pres="${esc(p.id)}"><span><b>${esc(p.cliente||'Sin cliente')}</b><br><span class="note">${esc(new Date(p.actualizado).toLocaleDateString('es-AR'))} · ${(p.items||[]).length} repuestos${+p.horas?' · '+esc(fmt.format(+p.horas).replace(/,00$/,''))+' h':''}</span></span><b>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</b></button>`}).join('')+'</div>':'<p class="empty">Todavía no hay presupuestos.</p>');
+     (PRES.length?'<div class="plist">'+PRES.map(p=>{const k=presCalc(p);return `<button class="pcard" data-pres="${esc(p.id)}"><span><b>${esc(p.cliente||'Sin cliente')}</b><br><span class="note">${esc(new Date(p.actualizado).toLocaleDateString('es-AR'))} · ${(p.items||[]).length} repuestos${+p.horas?' · con mano de obra':''}</span></span><b>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</b></button>`}).join('')+'</div>':'<p class="empty">Todavía no hay presupuestos.</p>');
     return;
   }
   $('#presList').hidden=true;$('#presEd').hidden=false;
@@ -738,8 +745,7 @@ function renderPres(){
   if(document.activeElement!==$('#peCliente'))$('#peCliente').value=cur.cliente||'';
   if(document.activeElement!==$('#peNota'))$('#peNota').value=cur.nota||'';
   if(document.activeElement!==$('#peHoras'))$('#peHoras').value=+cur.horas||'';
-  if(document.activeElement!==$('#peValor'))$('#peValor').value=+cur.valor_hora||'';
-  $('#peMon').value=cur.moneda_hora||'ARS';$('#peFavs').hidden=!canFav||!Object.keys(FAVS).length;
+$('#peFavs').hidden=!canFav||!Object.keys(FAVS).length;
   presTotals(true);
 }
 function presTotals(rows){
@@ -750,6 +756,7 @@ function presTotals(rows){
     <td class="n pr" data-st="${n}"></td><td><button class="del" data-ri="${n}" aria-label="Quitar">×</button></td></tr>`).join(''):'<tr><td colspan="5" class="note">Agregá repuestos con el buscador de arriba o desde la ficha de cada repuesto.</td></tr>';
   cur.items.forEach((i,n)=>{const el=document.querySelector(`[data-st="${n}"]`);if(el)el.innerHTML=esc(usd(i.precio*i.cantidad))+(k.dol?`<small>${esc(ars(i.precio*i.cantidad*k.dol))}</small>`:'')});
   $('#peMoTot').textContent=cur.moneda_hora==='USD'?usd(k.mo):ars(k.mo);
+  $('#peVhNote').innerHTML=+PREF.valor_hora?`Valor hora: <b>${esc(PREF.moneda_hora==='USD'?usd(PREF.valor_hora):ars(PREF.valor_hora))}</b>, se cambia en <b>Configurar</b>. En el detalle del presupuesto sale solo el total de mano de obra.`:'Todavía no cargaste el valor hora: ponelo en <b>Configurar</b>.';
   const both=(u,a)=>esc(usd(u))+(k.dol?' · '+esc(ars(a)):'');
   $('#peTot').innerHTML=`<div><span>Repuestos</span><span>${both(k.rep,k.repARS)}</span></div>
    <div><span>Mano de obra</span><span>${both(k.moUSD,k.moARS)}</span></div>
@@ -759,16 +766,22 @@ function presTotals(rows){
    ${k.dol?`<div class="note"><span>Equivale a ${esc(usd(k.totUSD))} · dólar BNA venta ${esc(ars(k.dol))}</span></div>`:'<div class="note">Sin cotización del dólar: total solo en USD.</div>'}`;
 }
 function presPrint(){
-  const p=cur,k=presCalc(p);let pp=document.getElementById('pp');if(!pp){pp=document.createElement('div');pp.id='pp';document.body.appendChild(pp)}
-  pp.style.cssText='display:none;font:14px/1.45 Archivo,Arial,sans-serif;color:#000;padding:24px';
-  pp.innerHTML=`<h1 style="font-size:24px;margin:0">Presupuesto</h1><p>${esc(p.cliente?'Cliente: '+p.cliente+' · ':'')}Fecha: ${esc(new Date().toLocaleDateString('es-AR'))}</p>
-   <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><thead><tr><th align="left">Repuesto</th><th>Código</th><th align="right">Cant.</th><th align="right">Unitario</th><th align="right">Subtotal</th></tr></thead><tbody>
-   ${p.items.map(i=>`<tr><td>${esc(i.d)}${i.a?`<br><i>${esc(i.a)}</i>`:''}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(k.dol?ars(i.precio*k.dol):usd(i.precio))}</td><td align="right">${esc(k.dol?ars(i.precio*i.cantidad*k.dol):usd(i.precio*i.cantidad))}</td></tr>`).join('')}
-   ${k.mo?`<tr><td colspan="2">Mano de obra</td><td align="right">${esc(fmt.format(+p.horas).replace(/,00$/,''))} h</td><td align="right">${esc(p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora))}</td><td align="right">${esc(k.dol?ars(k.moARS):usd(k.moUSD))}</td></tr>`:''}
+  const p=cur,k=presCalc(p),m=v=>k.dol?ars(v*k.dol):usd(v);
+  let pp=document.getElementById('pp');if(!pp){pp=document.createElement('div');pp.id='pp';document.body.appendChild(pp)}
+  const logo=PREF.logo&&/^data:image\//.test(PREF.logo)?`<img src="${esc(PREF.logo)}" alt="" style="max-height:70px;max-width:200px;object-fit:contain">`:'';
+  pp.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:14px">
+    <div style="display:flex;gap:14px;align-items:center">${logo}<div>${PREF.empresa?`<div style="font-size:20px;font-weight:800">${esc(PREF.empresa)}</div>`:''}${PREF.datos?`<div style="white-space:pre-line;font-size:12px">${esc(PREF.datos)}</div>`:''}</div></div>
+    <div style="text-align:right"><div style="font-size:22px;font-weight:800">PRESUPUESTO</div><div>Fecha: ${esc(new Date().toLocaleDateString('es-AR'))}</div></div></div>
+   ${p.cliente?`<p style="margin:0 0 12px"><b>Cliente:</b> ${esc(p.cliente)}</p>`:''}
+   <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><thead><tr style="background:#eee"><th align="left">Descripción</th><th align="left">Código</th><th align="right">Cant.</th><th align="right">Unitario</th><th align="right">Subtotal</th></tr></thead><tbody>
+   ${p.items.map(i=>`<tr><td>${esc(i.d)}${i.a?`<br><i>${esc(i.a)}</i>`:''}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(m(i.precio))}</td><td align="right">${esc(m(i.precio*i.cantidad))}</td></tr>`).join('')}
+   ${k.mo?`<tr><td colspan="4">Mano de obra</td><td align="right">${esc(k.dol?ars(k.moARS):usd(k.moUSD))}</td></tr>`:''}
    ${p.con_iva?`<tr><td colspan="4" align="right">Subtotal</td><td align="right">${esc(k.dol?ars(k.subARS):usd(k.subUSD))}</td></tr><tr><td colspan="4" align="right">IVA ${esc(fmt.format(+p.iva).replace(/,00$/,''))}%</td><td align="right">${esc(k.dol?ars(k.ivaARS):usd(k.ivaUSD))}</td></tr>`:''}
    <tr><td colspan="4" align="right"><b>${p.con_iva?'TOTAL CON IVA':'TOTAL + IVA'}</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
-   ${k.dol?`<p>Equivale a ${esc(usd(k.totUSD))}. Dólar oficial Banco Nación venta: ${esc(ars(k.dol))}.</p>`:''}${p.nota?`<p>${esc(p.nota)}</p>`:''}`;
-  window.print();
+   ${k.dol?`<p style="font-size:12px">Valores en pesos al dólar oficial Banco Nación venta ${esc(ars(k.dol))} (equivale a ${esc(usd(k.totUSD))}).</p>`:''}${p.nota?`<p>${esc(p.nota)}</p>`:''}`;
+  const t=document.title;document.title='Presupuesto'+(p.cliente?' '+p.cliente:'')+(PREF.empresa?' - '+PREF.empresa:'');
+  const back=()=>{document.title=t;window.removeEventListener('afterprint',back)};window.addEventListener('afterprint',back);
+  window.print();setTimeout(back,3000);
 }
 function aumInit(){
   const n={},m={};items.forEach(x=>{n[x.k]=(n[x.k]||0)+1;x.ms.forEach(v=>m[v]=(m[v]||0)+1)});
@@ -833,19 +846,23 @@ async function aumUndo(id,btn){
   await sb.from('ajustes_precio').update({deshecho:new Date().toISOString()}).eq('id',id);
   full();aumPrev();aumHist();toast('Aumento deshecho: precios anteriores restaurados.');
 }
+let cfLogo=null;
+function drawLogo(){$('#cfLogoPrev').innerHTML=cfLogo?`<img src="${esc(cfLogo)}" alt="Logo">`:'Sin logo'}
+function logoData(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,500/im.width,200/im.height),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);let d=c.toDataURL('image/png');if(d.length>350000)d=c.toDataURL('image/jpeg',0.85);d.length>390000?rej(new Error('El logo es muy pesado')):res(d)};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('Imagen no válida'))};im.src=u})}
 function openCfg(){
   $('#pct').value=CONF.pct;$('#ivaIn').value=CONF.iva;$('#pct').disabled=!logged;$('#ivaIn').disabled=!logged;
   $('#cGlobalNote').textContent=logged?'Valen para todos los que usan la lista.':'Valen para todos; solo los editores los pueden cambiar.';
   $('#aumBox').hidden=!logged;if(logged)aumInit();
-  $('#cfValor').value=PREF.valor_hora||'';$('#cfMon').value=PREF.moneda_hora||'ARS';$('#cMsg').textContent='';cfgEj();$('#cov').classList.add('open');
+  $('#cfValor').value=PREF.valor_hora||'';$('#cfMon').value=PREF.moneda_hora||'ARS';
+  $('#cfEmp').value=PREF.empresa||'';$('#cfDatos').value=PREF.datos||'';cfLogo=PREF.logo||null;drawLogo();$('#cMsg').textContent='';cfgEj();$('#cov').classList.add('open');
 }
 async function saveCfg(e){
   e.preventDefault();$('#cMsg').textContent='Guardando…';let err='';
   if(logged){const v=parseFloat($('#pct').value),iv=parseFloat($('#ivaIn').value);
     if(!(v>=0)||!(iv>=0&&iv<=100)){$('#cMsg').textContent='Revisá el recargo y el IVA.';return}
     if(v!==CONF.pct||iv!==CONF.iva){CONF.pct=v;CONF.iva=iv;const {error}=await sb.from('config').upsert({id:'main',pct:v,iva:iv});if(error)err='No se pudo guardar el recargo/IVA. '}}
-  const vh=Math.max(0,parseFloat($('#cfValor').value)||0);PREF={valor_hora:vh,moneda_hora:$('#cfMon').value};
-  const {error:e2}=await sb.from('preferencias').upsert({email:me.email,...PREF});if(e2)err+='No se pudo guardar el valor hora.';
+  const vh=Math.max(0,parseFloat($('#cfValor').value)||0);PREF={valor_hora:vh,moneda_hora:$('#cfMon').value,empresa:$('#cfEmp').value.trim()||null,datos:$('#cfDatos').value.trim()||null,logo:cfLogo||null};
+  const {error:e2}=await sb.from('preferencias').upsert({email:me.email,...PREF});if(e2)err+='No se pudieron guardar tus datos: '+e2.message;
   $('#cMsg').textContent=err||'Guardado.';render();if(openId)drawPane();if(presMode)renderPres();if(!err)setTimeout(()=>$('#cov').classList.remove('open'),600);
 }
 async function setSession(s){
