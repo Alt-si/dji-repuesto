@@ -95,6 +95,11 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .urow .row select,.urow .row .btn{height:40px;font-size:14px}
 .st{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap}
 .st.on{background:var(--field);color:#fff}.st.off{background:var(--soft);color:var(--mut)}
+.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.cand{border:2px solid var(--line);border-radius:12px;background:#fff;padding:0;overflow:hidden;cursor:pointer;display:grid;text-align:left;color:#14201c}
+.cand img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff}
+.cand span{font-size:12px;padding:4px 6px;line-height:1.25;color:#5b6b66;overflow-wrap:anywhere}
+.cand.ok{border-color:var(--field)}.cand.sel{outline:3px solid var(--acc)}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;z-index:40;display:none;gap:12px;align-items:center;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer}
 .note{font-size:13px;color:var(--mut)}
@@ -221,12 +226,14 @@ let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=t
 const CFG=window.REPUESTOS_CONFIG||{};
 const BUCKET='fotos';
 const movil=matchMedia('(pointer:coarse)').matches;
-const imgUrl=p=>p?(sb?sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl:''):'';
+const imgUrl=p=>!p?'':/^https:\/\//.test(p)?p:(sb?sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl:'');
+const FOTOS_FN=(CFG.url||'')+'/functions/v1/fotos';
+const candCache={};
 
 /* ---------- datos ---------- */
 function merge(){
   const out=[];
-  BASE.forEach((b,i)=>{const e=EDITS[b.id];if(e&&e.deleted)return;out.push(Object.assign({i},b,e?{d:e.d??b.d,p:e.p??b.p,img:e.img,info:e.info,por:e.por,t:e.t,edited:!!(e.d!=null||e.p!=null)}:{}))});
+  BASE.forEach((b,i)=>{const e=EDITS[b.id];if(e&&e.deleted)return;out.push(Object.assign({i},b,e?{d:e.d??b.d,p:e.p??b.p,img:e.img,imgFuente:e.imgFuente,info:e.info,por:e.por,t:e.t,edited:!!(e.d!=null||e.p!=null)}:{}))});
   Object.values(EDITS).filter(e=>e.added&&!e.deleted).forEach(e=>out.push({i:1e6+(e.t||0),id:e.id,c:e.c,d:e.d||'',p:e.p||0,img:e.img,info:e.info,added:true}));
   out.forEach(x=>{x.k=catOf(x.d,x.c);x.ms=modelsOf(x.d);x.s=(x.c+' '+x.d).toLowerCase()});
   items=out;
@@ -250,7 +257,7 @@ function models(){
   $('#model').innerHTML='<option value="">Todos los equipos</option>'+keys.map(k=>`<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)} (${n[k]})</option>`).join('');
 }
 const gimg=c=>'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(c);
-const thumb=x=>x.img&&sb?`<img src="${esc(imgUrl(x.img))}" alt="" loading="lazy">`:`<svg><use href="#i-${x.k}"/></svg>`;
+const thumb=x=>x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg>`;
 function render(){
   filter();
   const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;
@@ -295,13 +302,18 @@ function drawPane(){
   $('#pane').innerHTML=`<button class="x" id="pClose" aria-label="Cerrar">×</button>
   <span class="tag">${esc(CAT_BY[x.k].n)}</span> ${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join(' ')}
   <h2 id="dName">${esc(x.d)}</h2><div class="code">${esc(x.c)}</div>
-  <div class="big" id="drop">${x.img&&sb?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
+  <div class="big" id="drop">${x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
+  ${x.imgFuente?`<p class="note">Foto tomada de <a href="${esc(/^https:\/\//.test(x.imgFuente)?x.imgFuente:'#')}" target="_blank" rel="noopener">${esc((x.imgFuente.match(/^https:\/\/([^/]+)/)||[])[1]||'la tienda')}</a></p>`:''}
+  <h3 style="margin:16px 0 6px">Fotos encontradas por código</h3>
+  <div id="cands" class="cands"><p class="note">Buscando fotos de ${esc(x.c)}…</p></div>
   <div class="acts">
-   <a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="${g}" target="_blank" rel="noopener">Buscar foto en Google (por código) ↗</a>
-   ${assets?`<label class="btn pri" style="margin:0;display:inline-flex;align-items:center;font-size:16px">Subir foto<input type="file" id="pFile" accept="image/*" hidden></label>`:(sb?'<button class="btn pri" id="pLogin">Subir foto</button>':'')}
+   <a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="${g}" target="_blank" rel="noopener">Ver en Google ↗</a>
+   ${assets?`<label class="btn" style="margin:0;display:inline-flex;align-items:center;font-size:16px">Subir foto propia<input type="file" id="pFile" accept="image/*" hidden></label>`:''}
    ${x.img&&assets?'<button class="btn" id="pNoImg">Quitar foto</button>':''}
+   ${!assets&&sb?'<button class="btn" id="pLogin">Ingresar para elegir foto</button>':''}
   </div>
-  <p class="note">${assets?(movil?'1) Tocá “Buscar foto en Google”. 2) Mantené apretada la foto → <b>Descargar imagen</b>. 3) Volvé acá, tocá <b>Subir foto</b> y elegila de la galería (o sacale una foto al repuesto).':'Abrí “Buscar foto en Google”, hacé clic derecho sobre la imagen → <b>Copiar imagen</b>, volvé acá y pegala con Ctrl+V. También podés arrastrarla al recuadro o usar <b>Subir foto</b>.')+' La foto la ven todos.':(sb?'Para subir fotos tenés que ingresar con tu usuario.':'Para subir fotos hace falta conectar la lista a Supabase.')}</p>
+  ${assets?`<label for="pUrl">O pegá el link de una imagen (en Google: mantené apretada la foto → <b>Copiar dirección de imagen</b>)</label>
+  <div class="row"><input class="fi" id="pUrl" type="url" inputmode="url" placeholder="https://…" style="flex:1"><button class="btn pri" id="pUrlOk">Usar</button></div>`:''}
   <div class="prices"><div><small>Precio de lista</small><strong>${usd(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${usd(fin(x.p))}</strong></div></div>
   ${x.por?`<p class="note">Última modificación: ${esc(x.por)} · ${esc(new Date(x.t).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}))}</p>`:''}
   <h3 style="margin:20px 0 6px">Información del repuesto</h3>
@@ -315,11 +327,27 @@ function drawPane(){
   <div class="acts"><button class="btn pri" id="pSave">Guardar cambios</button>${x.edited?'<button class="btn" id="pRestore">Volver al precio y nombre originales</button>':''}<button class="btn" id="pDel">Eliminar</button></div>
   ${x.edited&&!x.added?`<p class="note">Original: ${esc(BASE[x.i].d)} · ${usd(BASE[x.i].p)}</p>`:''}`;
   $('#pTxt').textContent=x.info||autoInfo(x);
+  loadCands(x);
   if(!x.info)$('#pTxt').insertAdjacentHTML('beforeend','<div class="note" style="margin-top:8px">Texto general del rubro. Usá “Explicar con IA” o editalo para dejar una explicación propia.</div>');
 }
-function openPane(id){openId=id;drawPane();$('#ov').classList.add('open');setTimeout(()=>$('#pClose')&&$('#pClose').focus(),30)}
-function closePane(){openId=null;$('#ov').classList.remove('open')}
+function openPane(id){openId=id;try{history.replaceState(null,'','#'+encodeURIComponent(id))}catch(e){}drawPane();$('#ov').classList.add('open');setTimeout(()=>$('#pClose')&&$('#pClose').focus(),30)}
+function closePane(){openId=null;$('#ov').classList.remove('open');try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
 function shrink(file,max,q){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error('imagen no válida')),'image/jpeg',q)};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('imagen no válida'))};im.src=u})}
+async function loadCands(x){
+  const box=$('#cands');if(!box)return;
+  if(!CFG.url){box.innerHTML='<p class="note">La búsqueda automática necesita la conexión a Supabase.</p>';return}
+  try{
+    if(!candCache[x.c]){const r=await fetch(FOTOS_FN+'?codigo='+encodeURIComponent(x.c),{headers:{apikey:CFG.anonKey}});candCache[x.c]=(await r.json()).candidatos||[]}
+  }catch(e){if(openId===x.id&&$('#cands'))$('#cands').innerHTML='<p class="note">No se pudo buscar ahora. Probá con “Ver en Google”.</p>';return}
+  if(openId!==x.id||!$('#cands'))return;
+  const cs=candCache[x.c].filter(c=>/^https:\/\//.test(c.url)).slice(0,8);
+  if(!cs.length){$('#cands').innerHTML='<p class="note">No encontré fotos de este código en las tiendas. Probá con “Ver en Google”'+(assets?' y pegá el link de la imagen, o subí una foto propia.':'.')+'</p>';return}
+  $('#cands').innerHTML=cs.map((c,i)=>`<button class="cand${c.exacto?' ok':''}${x.img===c.url?' sel':''}" data-ci="${i}" title="${esc(c.titulo)}"><img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"><span>${c.exacto?'Código exacto · ':c.coincide?'Kit / diagrama · ':'Parecida · '}${esc(c.fuente.replace(/^www\./,''))}</span></button>`).join('')+
+    `<p class="note" style="grid-column:1/-1">${assets?'Tocá una foto para ponerla en este repuesto. La ven todos.':'Tocá una foto para verla grande.'+(sb?' Para guardarla, ingresá con tu usuario.':'')}</p>`;
+  $('#cands').onclick=e=>{const b=e.target.closest('[data-ci]');if(!b)return;const c=cs[+b.dataset.ci];
+    if(assets){save(x.id,{img:c.url,imgFuente:c.pagina});toast('Foto guardada.')}
+    else{$('#drop').innerHTML=`<img src="${esc(c.url)}" alt="" referrerpolicy="no-referrer">`;$('#drop').scrollIntoView({block:'nearest',behavior:'smooth'})}};
+}
 async function upload(file){
   if(!assets||!file||!/^image\//.test(file.type))return;
   const id=openId;toast('Subiendo foto…');
@@ -328,8 +356,8 @@ async function upload(file){
     const {error}=await sb.storage.from(BUCKET).upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
     if(error)throw error;
     const old=EDITS[id]&&EDITS[id].img;
-    await save(id,{img:path});toast('Foto guardada.');
-    if(old)sb.storage.from(BUCKET).remove([old]).catch(()=>{});
+    await save(id,{img:path,imgFuente:null});toast('Foto guardada.');
+    if(old&&!/^https:/.test(old))sb.storage.from(BUCKET).remove([old]).catch(()=>{});
   }catch(e){toast('No se pudo subir la foto: '+((e&&e.message)||''))}
 }
 let aiCtl=null;
@@ -392,7 +420,8 @@ $('#pane').addEventListener('click',e=>{
   else if(t.id==='pCancelInfo')$('#pInfoEd').hidden=true;
   else if(t.id==='pSaveInfo'){save(x.id,{info:$('#pInfo').value.trim()||null});toast('Información guardada.')}
   else if(t.id==='pNoImg')save(x.id,{img:null});
-  else if(t.id==='pLogin'){closePane();openLogin()}
+  else if(t.id==='pLogin'){openLogin()}
+  else if(t.id==='pUrlOk'){const u=$('#pUrl').value.trim();if(!/^https:\/\/\S+$/.test(u)){toast('Pegá un link que empiece con https://');return}save(x.id,{img:u,imgFuente:null});toast('Foto guardada.')}
   else if(t.id==='pDel')del(x.id);
   else if(t.id==='pRestore')save(x.id,{d:null,p:null});
   else if(t.id==='pSave'){
@@ -428,6 +457,7 @@ fetch('data.json').then(r=>r.json()).then(rows=>{
   BASE=rows.map(r=>({id:idOf(r.c),c:r.c,d:r.d,p:r.p}));
   $('#sub').textContent=`Vigente desde el 18/11/2026 hasta nuevo aviso · ${BASE.length.toLocaleString('es-AR')} productos · precios en USD`;
   full();
+  const hid=decodeURIComponent((location.hash||'').slice(1));if(hid&&items.some(y=>y.id===hid))openPane(hid);
 }).catch(()=>{$('#count').textContent='No se pudo cargar la lista.'});
 
 async function setSession(s){
