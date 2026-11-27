@@ -109,6 +109,21 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .fav .q .cant{width:80px;text-align:right}.fav .q .nota{flex:1 1 220px}
 .fav .sub{text-align:right;white-space:nowrap}.fav .sub strong{color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
 .favtot{display:flex;justify-content:flex-end;gap:16px;padding:14px 0;font-size:18px}
+.dol{background:rgba(255,255,255,.1);padding:8px 14px;border-radius:12px;display:grid;gap:2px;font-size:15px}
+.dol small{color:#cfe6dc;font-size:13px}.dol div{display:flex;gap:14px;flex-wrap:wrap}.dol b{font-size:20px;white-space:nowrap}.dol .dc b{font-size:15px;font-weight:500}
+.seg{display:inline-flex}.seg .btn{border-radius:0}.seg .btn:first-child{border-radius:10px 0 0 10px}.seg .btn:last-child{border-radius:0 10px 10px 0;border-left:0}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px}
+.addbox{position:relative}.sug{position:absolute;left:0;right:0;top:100%;z-index:6;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:340px;overflow:auto}
+.sug button{display:flex;gap:10px;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid var(--line);background:none;cursor:pointer;align-items:center}
+.sug button:hover,.sug button:focus{background:var(--soft)}.sug .code{margin-left:auto}
+.ptab{min-width:560px}.ptab td{vertical-align:middle}.ptab input{width:80px;height:40px;text-align:right;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:var(--bg);font-size:16px}
+.ptab small{display:block;color:var(--mut)}
+.mo{gap:12px;align-items:end}.mo label{margin:0;display:grid;gap:4px;flex:1 1 140px}.moSub{flex:1 1 160px;text-align:right}.moSub small{display:block;color:var(--mut)}.moSub b{font-size:20px}
+.ptot{margin-top:16px;border-top:2px solid var(--ink);padding-top:12px;display:grid;gap:6px}
+.ptot div{display:flex;justify-content:space-between;gap:12px}.ptot .big2{font-size:22px;font-weight:800}
+.plist{display:grid;gap:8px;margin-top:12px}.pcard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;background:var(--bg);text-align:left;width:100%}
+.pcard:hover{background:var(--soft)}
+@media print{body>*:not(#pp){display:none!important}#pp{display:block!important}}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;z-index:40;display:none;gap:12px;align-items:center;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer}
 .note{font-size:13px;color:var(--mut)}
@@ -154,6 +169,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <h1>Lista de precios de repuestos</h1>
   <p class="sub" id="sub">Vigente desde el 18/11/2026 hasta nuevo aviso · precios en USD</p>
  </div>
+ <div class="dol" id="dol" hidden><small>Dólar oficial Banco Nación</small><div><span>Venta <b id="dVenta"></b></span><span class="dc">Compra <b id="dCompra"></b></span></div><small id="dFecha"></small></div>
  <div class="pct"><span>Precio final = precio +</span><input id="pct" type="number" min="0" step="0.5" value="10" aria-label="Porcentaje de recargo"><span>%</span></div>
 </div></header>
 
@@ -165,7 +181,9 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
  </div>
  <div class="row">
   <div class="chips" id="chips" style="flex:1 1 400px"></div>
+  <div class="seg" role="group" aria-label="Moneda"><button class="btn" data-mon="USD">USD</button><button class="btn" data-mon="ARS">Pesos</button></div>
   <button class="btn" id="favBtn" aria-pressed="false" hidden>★ Favoritos</button>
+  <button class="btn" id="presBtn" aria-pressed="false" hidden>Presupuestos</button>
   <button class="btn" id="editBtn" aria-pressed="false">Modo edición</button>
   <button class="btn pri" id="addBtn">+ Agregar</button>
   <button class="btn" id="csvBtn">Exportar CSV</button>
@@ -175,6 +193,33 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 
 <main>
  <div class="info"><span id="count">Cargando lista…</span><span id="sync" class="note"></span></div>
+ <section id="presView" hidden>
+  <div id="presList"></div>
+  <div id="presEd" hidden>
+   <div class="favhead">
+    <div><h2 style="margin:0" id="peTitle">Presupuesto</h2><p class="note" id="peEstado"></p></div>
+    <div class="acts" style="margin:0"><button class="btn" id="peCopy">Copiar</button><button class="btn" id="pePrint">Imprimir / PDF</button><button class="btn" id="peBack">Mis presupuestos</button></div>
+   </div>
+   <div class="pgrid">
+    <div><label for="peCliente">Cliente</label><input class="fi" id="peCliente" maxlength="200" placeholder="Nombre del cliente"></div>
+    <div><label for="peNota">Nota</label><input class="fi" id="peNota" maxlength="2000" placeholder="Equipo, trabajo, validez…"></div>
+   </div>
+   <h3 style="margin:20px 0 6px">Repuestos</h3>
+   <div class="addbox"><input class="fi" id="peBuscar" placeholder="Agregar repuesto: escribí código o nombre" autocomplete="off"><div id="peSug" class="sug" hidden></div></div>
+   <div class="acts"><button class="btn" id="peFavs" hidden>Agregar mis favoritos</button><button class="btn" id="peAct">Actualizar precios y dólar</button></div>
+   <div class="scroll"><table class="ptab"><thead><tr><th>Repuesto</th><th class="n">Cant.</th><th class="n">Unitario</th><th class="n">Subtotal</th><th></th></tr></thead><tbody id="peItems"></tbody></table></div>
+   <h3 style="margin:22px 0 6px">Mano de obra</h3>
+   <div class="row mo">
+    <label>Horas<input class="fi" id="peHoras" type="number" min="0" step="0.5" inputmode="decimal"></label>
+    <label>Valor hora<input class="fi" id="peValor" type="number" min="0" step="any" inputmode="decimal"></label>
+    <label>Moneda<select class="fi" id="peMon"><option value="ARS">Pesos</option><option value="USD">USD</option></select></label>
+    <div class="moSub"><small>Mano de obra</small><b id="peMoTot"></b></div>
+   </div>
+   <p class="note">El valor hora queda guardado como tuyo para los próximos presupuestos.</p>
+   <div class="ptot" id="peTot"></div>
+   <div class="acts"><button class="btn" id="peDel">Eliminar presupuesto</button></div>
+  </div>
+ </section>
  <section id="favView" hidden>
   <div class="favhead">
    <div><h2 style="margin:0">Mis favoritos</h2><p class="note" id="favSum"></p></div>
@@ -236,11 +281,17 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const usd=v=>'USD '+fmt.format(v);
+const fmt0=new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const ars=v=>'$ '+fmt0.format(v);
+let DOLAR=null,MONEDA='USD';try{MONEDA=localStorage.getItem('rep_moneda')==='ARS'?'ARS':'USD'}catch(e){}
+const TC=()=>DOLAR&&DOLAR.venta>0?DOLAR.venta:0;
+const enPesos=()=>MONEDA==='ARS'&&TC()>0;
+const money=v=>enPesos()?ars(v*TC()):usd(v);
 const idOf=c=>String(c).trim().replace(/[^A-Za-z0-9_.~:@+-]/g,'_').replace(/^\.{1,2}$/,'_');
 const parseNum=s=>{s=String(s).trim().replace(/usd/i,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?Math.round(n*100)/100:null};
 const PER=60;
 let BASE=[],EDITS={},CONF={pct:10},items=[],view=[],page=0,cat='',editMode=false,openId=null;
-let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true,canFav=false,favMode=false,FAVS={};
+let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true,canFav=false,favMode=false,FAVS={},presMode=false,PRES=[],cur=null,PREF={valor_hora:0,moneda_hora:'ARS'};
 const CFG=window.REPUESTOS_CONFIG||{};
 const BUCKET='fotos';
 const movil=matchMedia('(pointer:coarse)').matches;
@@ -277,18 +328,21 @@ function models(){
 const gimg=c=>'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(c);
 const thumb=x=>x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg>`;
 function render(){
-  $('#favView').hidden=!favMode;$('#tbl').style.display=favMode?'none':'';$('#pager').style.display=favMode?'none':'';$('#empty').hidden=true;
+  const other=favMode||presMode;
+  $('#favView').hidden=!favMode;$('#presView').hidden=!presMode;$('#tbl').style.display=other?'none':'';$('#pager').style.display=other?'none':'';$('#empty').hidden=true;
+  if(presMode){renderPres();$('#count').textContent='Presupuestos';return}
   if(favMode){renderFavs();$('#count').textContent='Tus repuestos seleccionados';return}
   filter();
   const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;
   const rows=view.slice(page*PER,page*PER+PER);
-  $('#thFin').textContent=`Precio final (+${fmt.format(+CONF.pct||0).replace(/,00$/,'')}%)`;
+  $('#thFin').textContent=`Precio final (+${fmt.format(+CONF.pct||0).replace(/,00$/,'')}%)${enPesos()?' $':''}`;
+  document.querySelectorAll('[data-mon]').forEach(b=>b.classList.toggle('on',b.dataset.mon===(enPesos()?'ARS':'USD')));
   $('#thDel').hidden=!editMode;
   $('#tb').innerHTML=rows.map(x=>{
     const cn=CAT_BY[x.k].n,tags=`<div class="meta"><span class="tag">${esc(cn)}</span>${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join('')}${x.edited||x.added?'<span class="tag e">editado</span>':''}${x.info?'<span class="tag m">con info</span>':''}</div>`;
     const name=editMode?`<input class="ed" data-f="d" data-id="${esc(x.id)}" value="${esc(x.d)}" aria-label="Nombre">`:`<button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button>`;
-    const price=editMode?`<input class="ed p" data-f="p" data-id="${esc(x.id)}" value="${fmt.format(x.p)}" inputmode="decimal" aria-label="Precio">`:`<span class="pr">${usd(x.p)}</span>`;
-    return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${canFav?`<button class="star${FAVS[x.id]?' on':''}" data-fav="${esc(x.id)}" aria-pressed="${!!FAVS[x.id]}" aria-label="${FAVS[x.id]?'Quitar de':'Agregar a'} favoritos" title="Favorito">${FAVS[x.id]?'★':'☆'}</button>`:''}${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td><td class="n p">${price}</td><td class="n f"><span class="pr fin">${usd(fin(x.p))}</span></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
+    const price=editMode?`<input class="ed p" data-f="p" data-id="${esc(x.id)}" value="${fmt.format(x.p)}" inputmode="decimal" aria-label="Precio">`:`<span class="pr">${money(x.p)}</span>`;
+    return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${canFav?`<button class="star${FAVS[x.id]?' on':''}" data-fav="${esc(x.id)}" aria-pressed="${!!FAVS[x.id]}" aria-label="${FAVS[x.id]?'Quitar de':'Agregar a'} favoritos" title="Favorito">${FAVS[x.id]?'★':'☆'}</button>`:''}${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td><td class="n p">${price}</td><td class="n f"><span class="pr fin">${money(fin(x.p))}</span></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
   $('#empty').hidden=view.length>0;
   $('#favBtn').textContent='★ Favoritos ('+Object.keys(FAVS).length+')';
   $('#count').textContent=`${view.length.toLocaleString('es-AR')} de ${items.length.toLocaleString('es-AR')} repuestos`;
@@ -322,7 +376,7 @@ function drawPane(){
   const g=gimg(x.c);
   $('#pane').innerHTML=`<button class="x" id="pClose" aria-label="Cerrar">×</button>
   <span class="tag">${esc(CAT_BY[x.k].n)}</span> ${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join(' ')}
-  <h2 id="dName">${esc(x.d)}</h2>${canFav?`<button class="btn" id="pFav" style="margin:6px 0">${FAVS[x.id]?'★ En favoritos · quitar':'☆ Agregar a favoritos'}</button>`:''}<div class="code">${esc(x.c)}</div>
+  <h2 id="dName">${esc(x.d)}</h2>${cur?`<button class="btn pri" id="pPres" style="margin:6px 6px 6px 0">+ Agregar al presupuesto${cur.cliente?' de '+esc(cur.cliente):''}</button>`:''}${canFav?`<button class="btn" id="pFav" style="margin:6px 0">${FAVS[x.id]?'★ En favoritos · quitar':'☆ Agregar a favoritos'}</button>`:''}<div class="code">${esc(x.c)}</div>
   <div class="big" id="drop">${x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
   ${x.imgFuente?`<p class="note">Foto tomada de <a href="${esc(/^https:\/\//.test(x.imgFuente)?x.imgFuente:'#')}" target="_blank" rel="noopener">${esc((x.imgFuente.match(/^https:\/\/([^/]+)/)||[])[1]||'la tienda')}</a></p>`:''}
   <h3 style="margin:16px 0 6px">Fotos encontradas por código</h3>
@@ -335,7 +389,7 @@ function drawPane(){
   </div>
   ${assets?`<label for="pUrl">O pegá el link de una imagen (en Google: mantené apretada la foto → <b>Copiar dirección de imagen</b>)</label>
   <div class="row"><input class="fi" id="pUrl" type="url" inputmode="url" placeholder="https://…" style="flex:1"><button class="btn pri" id="pUrlOk">Usar</button></div>`:''}
-  <div class="prices"><div><small>Precio de lista</small><strong>${usd(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${usd(fin(x.p))}</strong></div></div>
+  <div class="prices"><div><small>Precio de lista</small><strong>${money(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${money(fin(x.p))}</strong></div></div>
   ${x.por?`<p class="note">Última modificación: ${esc(x.por)} · ${esc(new Date(x.t).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}))}</p>`:''}
   <h3 style="margin:20px 0 6px">Información del repuesto</h3>
   <div class="txt" id="pTxt"></div>
@@ -415,16 +469,52 @@ $('#model').addEventListener('change',()=>{page=0;render()});
 $('#sort').addEventListener('change',()=>{page=0;render()});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;cat=b.dataset.k;page=0;chips();render()});
 $('#pager').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(!b||b.disabled)return;page=+b.dataset.pg;render();$('#tbl').scrollIntoView({block:'start'})});
-$('#favBtn').addEventListener('click',()=>{favMode=!favMode;$('#favBtn').classList.toggle('on',favMode);$('#favBtn').setAttribute('aria-pressed',favMode);render();window.scrollTo({top:0})});
+$('#presBtn').addEventListener('click',()=>{presMode=!presMode;if(presMode)favMode=false;$('#presBtn').classList.toggle('on',presMode);$('#favBtn').classList.remove('on');render();window.scrollTo({top:0})});
+document.querySelectorAll('[data-mon]').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.mon==='ARS'&&!TC()){toast('Todavía no hay cotización del dólar.');return}
+  MONEDA=b.dataset.mon;try{localStorage.setItem('rep_moneda',MONEDA)}catch(e){}render();if(openId)drawPane()}));
+$('#presView').addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.id==='pNew')presNew();
+  else if(t.id==='pExit')$('#presBtn').click();
+  else if(t.dataset.pres){cur=PRES.find(p=>p.id===t.dataset.pres)||null;cur&&(cur.items=cur.items||[]);renderPres();window.scrollTo({top:0})}
+  else if(t.id==='peBack'){presSave(true);cur=null;renderPres()}
+  else if(t.id==='peCopy'){navigator.clipboard.writeText(presText(cur)).then(()=>toast('Presupuesto copiado. Pegalo en WhatsApp o en un mail.'),()=>toast('No se pudo copiar.'))}
+  else if(t.id==='pePrint')presPrint();
+  else if(t.id==='peFavs'){favRows().forEach(({f,x})=>{const it=cur.items.find(i=>i.id===x.id);if(!it)cur.items.push({id:x.id,c:x.c,d:x.d,cantidad:f.cantidad,precio:r2(fin(x.p))})});presSave();renderPres();toast('Favoritos agregados.')}
+  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d}});cur.dolar=TC()||cur.dolar;presSave();renderPres();toast('Precios y dólar actualizados.')}
+  else if(t.dataset.ri!=null){cur.items.splice(+t.dataset.ri,1);presSave();presTotals(true)}
+  else if(t.id==='peDel'){if(!t.dataset.sure){t.dataset.sure='1';t.textContent='¿Seguro? Tocá de nuevo para eliminar';return}
+    sb.from('presupuestos').delete().eq('id',cur.id).then(({error})=>{if(error){toast('No se pudo eliminar.');return}PRES=PRES.filter(p=>p.id!==cur.id);cur=null;renderPres();toast('Presupuesto eliminado.')})}
+  else if(t.dataset.open){openPane(t.dataset.open)}
+  else if(t.dataset.add){const x=items.find(y=>y.id===t.dataset.add);if(x){presAdd(x,1);$('#peBuscar').value='';$('#peSug').hidden=true;$('#peBuscar').focus()}}
+});
+$('#presView').addEventListener('input',e=>{
+  if(!cur)return;const t=e.target;
+  if(t.id==='peCliente'){cur.cliente=t.value;$('#peTitle').textContent='Presupuesto'+(t.value?' · '+t.value:'');presSave()}
+  else if(t.id==='peNota'){cur.nota=t.value;presSave()}
+  else if(t.id==='peHoras'||t.id==='peValor'){cur[t.id==='peHoras'?'horas':'valor_hora']=Math.max(0,+t.value||0);presTotals(false);presSave();if(t.id==='peValor')savePref()}
+  else if(t.dataset.qi!=null){const v=Math.round(+t.value);if(v>=1){cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}}
+  else if(t.id==='peBuscar'){const w=t.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if(!w.length){$('#peSug').hidden=true;return}
+    const r=items.filter(x=>w.every(q=>x.s.includes(q))).slice(0,8);
+    $('#peSug').hidden=false;$('#peSug').innerHTML=r.length?r.map(x=>`<button data-add="${esc(x.id)}"><span>${esc(x.d)}</span><span class="code">${esc(x.c)}</span><b class="pr">${esc(money(fin(x.p)))}</b></button>`).join(''):'<p class="note" style="padding:10px">Sin resultados.</p>'}
+});
+$('#presView').addEventListener('change',e=>{if(!cur)return;const t=e.target;
+  if(t.id==='peMon'){cur.moneda_hora=t.value;presTotals(false);presSave();savePref()}
+  else if(t.dataset.qi!=null){const v=Math.max(1,Math.round(+t.value||1));t.value=v;cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}});
+$('#peBuscar').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('#peSug button');if(b)b.click()}if(e.key==='Escape')$('#peSug').hidden=true});
+let pfT;function savePref(){clearTimeout(pfT);pfT=setTimeout(()=>{PREF={valor_hora:+cur.valor_hora||0,moneda_hora:cur.moneda_hora};sb.from('preferencias').upsert({email:me.email,...PREF}).then(({error})=>{if(error)toast('No se pudo guardar tu valor hora.')})},800)}
+$('#favBtn').addEventListener('click',()=>{presMode=false;$('#presBtn').classList.remove('on');favMode=!favMode;$('#favBtn').classList.toggle('on',favMode);$('#favBtn').setAttribute('aria-pressed',favMode);render();window.scrollTo({top:0})});
 $('#favExit').addEventListener('click',()=>$('#favBtn').click());
 $('#favList').addEventListener('click',e=>{const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}const o=e.target.closest('[data-open]');if(o)openPane(o.dataset.open)});
 $('#favList').addEventListener('change',e=>{const c=e.target.closest('[data-cant]');if(c){const v=Math.max(1,Math.round(+c.value||1));c.value=v;updFav(c.dataset.cant,{cantidad:v});return}
   const n=e.target.closest('[data-nota]');if(n)updFav(n.dataset.nota,{nota:n.value.trim()||null})});
 $('#favList').addEventListener('input',e=>{const c=e.target.closest('[data-cant]');if(c&&+c.value>=1){FAVS[c.dataset.cant].cantidad=Math.round(+c.value);renderFavSum()}});
 $('#favCopy').addEventListener('click',async()=>{const rs=favRows();if(!rs.length)return;
-  const lines=rs.map(({f,x})=>`${f.cantidad} x ${x.d} (${x.c}) - ${usd(fin(x.p))} c/u = ${usd(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
+  const lines=rs.map(({f,x})=>`${f.cantidad} x ${x.d} (${x.c}) - ${money(fin(x.p))} c/u = ${money(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
   const tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0);
-  try{await navigator.clipboard.writeText('Repuestos seleccionados\n'+lines.join('\n')+'\nTotal: '+usd(tot));toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
+  try{await navigator.clipboard.writeText('Repuestos seleccionados\n'+lines.join('\n')+'\nTotal: '+money(tot));toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
 $('#editBtn').addEventListener('click',()=>{editMode=!editMode;$('#editBtn').classList.toggle('on',editMode);$('#editBtn').setAttribute('aria-pressed',editMode);$('#editBtn').textContent=editMode?'Terminar edición':'Modo edición';render()});
 $('#tb').addEventListener('click',e=>{
   const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}
@@ -454,6 +544,7 @@ $('#pane').addEventListener('click',e=>{
   else if(t.id==='pNoImg')save(x.id,{img:null});
   else if(t.id==='pLogin'){openLogin()}
   else if(t.id==='pFav'){toggleFav(x.id)}
+  else if(t.id==='pPres'){presAdd(x,1);toast('Agregado al presupuesto.')}
   else if(t.id==='pUrlOk'){const u=$('#pUrl').value.trim();if(!/^https:\/\/\S+$/.test(u)){toast('Pegá un link que empiece con https://');return}save(x.id,{img:u,imgFuente:null});toast('Foto guardada.')}
   else if(t.id==='pDel')del(x.id);
   else if(t.id==='pRestore')save(x.id,{d:null,p:null});
@@ -517,20 +608,116 @@ async function updFav(id,patch){
 function favRows(){return Object.keys(FAVS).map(id=>({f:FAVS[id],x:items.find(y=>y.id===id)})).filter(r=>r.x).sort((a,b)=>String(a.f.creado).localeCompare(String(b.f.creado)))}
 function renderFavSum(){
   const rs=favRows(),tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0),u=rs.reduce((s,r)=>s+r.f.cantidad,0);
-  $('#favSum').textContent=rs.length?`${rs.length} repuestos · ${fmt.format(u).replace(/,00$/,'')} unidades · Total con recargo: ${usd(tot)}`:'';
-  rs.forEach(r=>{const el=document.querySelector(`[data-sub="${CSS.escape(r.x.id)}"]`);if(el)el.textContent=usd(fin(r.x.p)*r.f.cantidad)});
-  const t=$('#favTot');if(t)t.innerHTML=`<span>Total con recargo</span><strong>${usd(tot)}</strong>`;
+  $('#favSum').textContent=rs.length?`${rs.length} repuestos · ${fmt.format(u).replace(/,00$/,'')} unidades · Total con recargo: ${money(tot)}`:'';
+  rs.forEach(r=>{const el=document.querySelector(`[data-sub="${CSS.escape(r.x.id)}"]`);if(el)el.textContent=money(fin(r.x.p)*r.f.cantidad)});
+  const t=$('#favTot');if(t)t.innerHTML=`<span>Total con recargo</span><strong>${money(tot)}</strong>`;
 }
 function renderFavs(){
   const rs=favRows();
   $('#favList').innerHTML=rs.length?rs.map(({f,x})=>`<div class="fav">
    <button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button>
-   <div><button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button><div class="code">${esc(x.c)} · ${usd(fin(x.p))} c/u</div></div>
+   <div><button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button><div class="code">${esc(x.c)} · ${money(fin(x.p))} c/u</div></div>
    <div class="sub"><strong data-sub="${esc(x.id)}"></strong><br><button class="star on" data-fav="${esc(x.id)}" aria-label="Quitar de favoritos" title="Quitar">★</button></div>
    <div class="q"><label class="note" style="margin:0">Cant.</label><input class="cant" type="number" min="1" step="1" inputmode="numeric" value="${esc(f.cantidad)}" data-cant="${esc(x.id)}" aria-label="Cantidad">
     <input class="nota" maxlength="500" placeholder="Nota (cliente, máquina, pedido…)" value="${esc(f.nota)}" data-nota="${esc(x.id)}" aria-label="Nota"></div>
   </div>`).join('')+'<div class="favtot" id="favTot"></div>':'<p class="empty">Todavía no marcaste favoritos. Tocá la estrella ☆ al lado de cualquier repuesto.</p>';
   renderFavSum();
+}
+/* ---------- dólar ---------- */
+function showDolar(){
+  if(!TC())return;
+  $('#dol').hidden=false;$('#dCompra').textContent=DOLAR.compra?ars(DOLAR.compra):'—';$('#dVenta').textContent=ars(DOLAR.venta);
+  $('#dFecha').textContent=(DOLAR.fecha_banco?'Cotización del '+DOLAR.fecha_banco:'')+(DOLAR.desactualizado?' · puede estar desactualizada':'')+' · los pesos se calculan con el valor venta';
+}
+async function loadDolar(){
+  if(!CFG.url)return;
+  try{const r=await fetch(CFG.url+'/functions/v1/dolar',{headers:{apikey:CFG.anonKey}});const j=await r.json();if(j&&+j.venta>0){j.compra=+j.compra||null;j.venta=+j.venta;DOLAR=j;showDolar();render();if(openId)drawPane();if(presMode)renderPres()}}catch(e){}
+}
+/* ---------- presupuestos ---------- */
+const r2=v=>Math.round(v*100)/100;
+async function loadPres(){
+  const {data}=await sb.from('presupuestos').select('*').order('actualizado',{ascending:false});PRES=data||[];
+  const {data:pf}=await sb.from('preferencias').select('valor_hora,moneda_hora').eq('email',me.email).maybeSingle();if(pf)PREF={valor_hora:+pf.valor_hora||0,moneda_hora:pf.moneda_hora||'ARS'};
+  if(cur)cur=PRES.find(p=>p.id===cur.id)||null;
+}
+function presCalc(p){
+  const dol=+p.dolar||TC()||0;
+  const rep=(p.items||[]).reduce((s,i)=>s+i.precio*i.cantidad,0);
+  const mo=(+p.horas||0)*(+p.valor_hora||0);
+  const moUSD=p.moneda_hora==='USD'?mo:(dol?mo/dol:0), moARS=p.moneda_hora==='ARS'?mo:mo*dol;
+  return {dol,rep,repARS:rep*dol,mo,moUSD,moARS,totUSD:rep+moUSD,totARS:rep*dol+moARS};
+}
+function presAdd(x,cant){
+  if(!cur)return;
+  const it=cur.items.find(i=>i.id===x.id);
+  if(it)it.cantidad+=cant;else cur.items.push({id:x.id,c:x.c,d:x.d,cantidad:cant,precio:r2(fin(x.p))});
+  presSave();if(presMode)renderPres();
+}
+let psT=null,psBusy=Promise.resolve();
+function presSave(now){
+  if(!cur)return;$('#peEstado').textContent='Guardando…';clearTimeout(psT);const c=cur;
+  psT=setTimeout(()=>{psBusy=psBusy.then(async()=>{
+    const body={cliente:c.cliente||null,nota:c.nota||null,items:c.items,horas:+c.horas||0,valor_hora:+c.valor_hora||0,moneda_hora:c.moneda_hora,dolar:c.dolar,actualizado:new Date().toISOString()};
+    const {error}=await sb.from('presupuestos').update(body).eq('id',c.id);
+    if(cur===c)$('#peEstado').textContent=error?'No se pudo guardar: '+error.message:'Guardado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  })},now?0:700);
+}
+async function presNew(){
+  const body={email:me.email,items:[],horas:0,valor_hora:PREF.valor_hora,moneda_hora:PREF.moneda_hora,dolar:TC()||null};
+  const {data,error}=await sb.from('presupuestos').insert(body).select().single();
+  if(error){toast('No se pudo crear: '+error.message);return}
+  PRES.unshift(data);cur=data;renderPres();setTimeout(()=>$('#peCliente').focus(),50);
+}
+function presText(p){
+  const k=presCalc(p),L=[];
+  L.push('PRESUPUESTO'+(p.cliente?' - '+p.cliente:''));L.push('Fecha: '+new Date(p.actualizado||Date.now()).toLocaleDateString('es-AR'));
+  (p.items||[]).forEach(i=>L.push(`${i.cantidad} x ${i.d} (${i.c}) - ${usd(i.precio)} c/u = ${usd(i.precio*i.cantidad)}${k.dol?' / '+ars(i.precio*i.cantidad*k.dol):''}`));
+  L.push('Repuestos: '+usd(k.rep)+(k.dol?' / '+ars(k.repARS):''));
+  if(k.mo)L.push(`Mano de obra: ${fmt.format(+p.horas).replace(/,00$/,'')} h x ${p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora)} = ${p.moneda_hora==='USD'?usd(k.mo):ars(k.mo)}`);
+  L.push('TOTAL: '+(k.dol?ars(k.totARS)+' (≈ '+usd(k.totUSD)+')':usd(k.totUSD)));
+  if(k.dol)L.push('Dólar BNA venta: '+ars(k.dol));
+  if(p.nota)L.push('Nota: '+p.nota);
+  return L.join('\n');
+}
+function renderPres(){
+  if(!cur){
+    $('#presEd').hidden=true;$('#presList').hidden=false;
+    $('#presList').innerHTML=`<div class="favhead"><div><h2 style="margin:0">Mis presupuestos</h2><p class="note">Elegí repuestos, cantidades y horas de mano de obra. Quedan guardados.</p></div><div class="acts" style="margin:0"><button class="btn pri" id="pNew">+ Nuevo presupuesto</button><button class="btn" id="pExit">Volver a la lista</button></div></div>`+
+     (PRES.length?'<div class="plist">'+PRES.map(p=>{const k=presCalc(p);return `<button class="pcard" data-pres="${esc(p.id)}"><span><b>${esc(p.cliente||'Sin cliente')}</b><br><span class="note">${esc(new Date(p.actualizado).toLocaleDateString('es-AR'))} · ${(p.items||[]).length} repuestos${+p.horas?' · '+esc(fmt.format(+p.horas).replace(/,00$/,''))+' h':''}</span></span><b>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</b></button>`}).join('')+'</div>':'<p class="empty">Todavía no hay presupuestos.</p>');
+    return;
+  }
+  $('#presList').hidden=true;$('#presEd').hidden=false;
+  $('#peTitle').textContent='Presupuesto'+(cur.cliente?' · '+cur.cliente:'');
+  if(document.activeElement!==$('#peCliente'))$('#peCliente').value=cur.cliente||'';
+  if(document.activeElement!==$('#peNota'))$('#peNota').value=cur.nota||'';
+  if(document.activeElement!==$('#peHoras'))$('#peHoras').value=+cur.horas||'';
+  if(document.activeElement!==$('#peValor'))$('#peValor').value=+cur.valor_hora||'';
+  $('#peMon').value=cur.moneda_hora||'ARS';$('#peFavs').hidden=!canFav||!Object.keys(FAVS).length;
+  presTotals(true);
+}
+function presTotals(rows){
+  const k=presCalc(cur);
+  if(rows)$('#peItems').innerHTML=cur.items.length?cur.items.map((i,n)=>`<tr><td><button class="nm" data-open="${esc(i.id)}">${esc(i.d)}</button><small>${esc(i.c)}</small></td>
+    <td class="n"><input type="number" min="1" step="1" inputmode="numeric" value="${esc(i.cantidad)}" data-qi="${n}" aria-label="Cantidad"></td>
+    <td class="n pr">${esc(usd(i.precio))}${k.dol?`<small>${esc(ars(i.precio*k.dol))}</small>`:''}</td>
+    <td class="n pr" data-st="${n}"></td><td><button class="del" data-ri="${n}" aria-label="Quitar">×</button></td></tr>`).join(''):'<tr><td colspan="5" class="note">Agregá repuestos con el buscador de arriba o desde la ficha de cada repuesto.</td></tr>';
+  cur.items.forEach((i,n)=>{const el=document.querySelector(`[data-st="${n}"]`);if(el)el.innerHTML=esc(usd(i.precio*i.cantidad))+(k.dol?`<small>${esc(ars(i.precio*i.cantidad*k.dol))}</small>`:'')});
+  $('#peMoTot').textContent=cur.moneda_hora==='USD'?usd(k.mo):ars(k.mo);
+  $('#peTot').innerHTML=`<div><span>Repuestos</span><span>${esc(usd(k.rep))}${k.dol?' · '+esc(ars(k.repARS)):''}</span></div>
+   <div><span>Mano de obra</span><span>${esc(usd(k.moUSD))}${k.dol?' · '+esc(ars(k.moARS)):''}</span></div>
+   <div class="big2"><span>Total</span><span>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</span></div>
+   ${k.dol?`<div class="note"><span>Equivale a ${esc(usd(k.totUSD))} · dólar BNA venta ${esc(ars(k.dol))}</span></div>`:'<div class="note">Sin cotización del dólar: total solo en USD.</div>'}`;
+}
+function presPrint(){
+  const p=cur,k=presCalc(p);let pp=document.getElementById('pp');if(!pp){pp=document.createElement('div');pp.id='pp';document.body.appendChild(pp)}
+  pp.style.cssText='display:none;font:14px/1.45 Archivo,Arial,sans-serif;color:#000;padding:24px';
+  pp.innerHTML=`<h1 style="font-size:24px;margin:0">Presupuesto</h1><p>${esc(p.cliente?'Cliente: '+p.cliente+' · ':'')}Fecha: ${esc(new Date().toLocaleDateString('es-AR'))}</p>
+   <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><thead><tr><th align="left">Repuesto</th><th>Código</th><th align="right">Cant.</th><th align="right">Unitario</th><th align="right">Subtotal</th></tr></thead><tbody>
+   ${p.items.map(i=>`<tr><td>${esc(i.d)}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(k.dol?ars(i.precio*k.dol):usd(i.precio))}</td><td align="right">${esc(k.dol?ars(i.precio*i.cantidad*k.dol):usd(i.precio*i.cantidad))}</td></tr>`).join('')}
+   ${k.mo?`<tr><td colspan="2">Mano de obra</td><td align="right">${esc(fmt.format(+p.horas).replace(/,00$/,''))} h</td><td align="right">${esc(p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora))}</td><td align="right">${esc(k.dol?ars(k.moARS):usd(k.moUSD))}</td></tr>`:''}
+   <tr><td colspan="4" align="right"><b>TOTAL</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
+   ${k.dol?`<p>Equivale a ${esc(usd(k.totUSD))}. Dólar oficial Banco Nación venta: ${esc(ars(k.dol))}.</p>`:''}${p.nota?`<p>${esc(p.nota)}</p>`:''}`;
+  window.print();
 }
 async function setSession(s){
   session=s||null;me=null;
@@ -538,6 +725,7 @@ async function setSession(s){
   logged=!!(me&&me.activo&&me.rol!=='consulta');assets=logged?{}:null;
   canFav=!!(me&&me.activo&&(me.favoritos||me.rol==='admin'));
   await loadFavs();$('#favBtn').hidden=!canFav;if(!canFav&&favMode){favMode=false}
+  const act=!!(me&&me.activo);$('#presBtn').hidden=!act;if(!act){presMode=false;cur=null;PRES=[]}else{await loadPres()}
   const isAdm=logged&&me.rol==='admin';
   $('#loginBtn').hidden=false;$('#loginBtn').textContent=!session?'Ingresar':isAdm?'Panel admin':'Mi cuenta';
   ['#editBtn','#addBtn'].forEach(s=>$(s).hidden=!logged);$('#pct').disabled=!logged;
@@ -611,6 +799,7 @@ async function loadAll(){
 }
 if(CFG.url&&CFG.anonKey&&window.supabase){
   sb=window.supabase.createClient(CFG.url,CFG.anonKey);
+  loadDolar();setInterval(loadDolar,15*60*1000);
   $('#sync').textContent='Conectando…';
   loadAll().then(()=>{$('#sync').textContent='Lista compartida al día'}).catch(e=>{$('#sync').textContent='No se pudo conectar con la base: '+(e.message||'')});
   sb.channel('cambios').on('postgres_changes',{event:'*',schema:'public',table:'edits'},p=>{

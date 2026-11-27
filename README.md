@@ -48,6 +48,21 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 - El administrador lo habilita por usuario en el panel (casilla **Favoritos**). Los administradores lo tienen siempre.
 - Permiso **Consulta**: ve la lista y usa favoritos, pero no puede cambiar precios ni fotos.
 
+### Dólar y precios en pesos
+
+- En la portada se muestra el **dólar oficial del Banco Nación** (billete), venta y compra, con la fecha del banco.
+- La conversión a pesos usa el **valor venta**.
+- La cotización la lee la función `dolar` de bna.com.ar (si el banco no responde, de dolarapi.com) y se renueva cada 15 minutos mientras alguien usa la lista.
+- El selector **USD / Pesos** cambia cómo se ven todos los precios; cada persona lo elige y queda recordado en su navegador.
+
+### Presupuestos
+
+- Botón **Presupuestos** (cualquier usuario habilitado). Cada usuario ve solo los suyos.
+- Cliente, nota, repuestos (buscador por código o nombre, desde la ficha con "+ Agregar al presupuesto", o "Agregar mis favoritos") con cantidad.
+- **Mano de obra**: horas × valor hora, en pesos o en dólares. El valor hora queda guardado como preferencia del usuario.
+- Totales en USD y en pesos con el dólar venta del momento; **Actualizar precios y dólar** los vuelve a tomar de la lista.
+- **Copiar** (para WhatsApp o mail) e **Imprimir / PDF**. Se guarda solo mientras se escribe.
+
 ### Base de datos
 
 | Tabla / función | Para qué |
@@ -56,8 +71,13 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 | `config` | El porcentaje de recargo (`id = 'main'`) |
 | `editores` | Usuarios: email, nombre, rol (`admin`/`editor`/`consulta`), activo, favoritos |
 | `favoritos` | Listado de cada usuario: repuesto, cantidad, nota |
+| `presupuestos` | Presupuestos de cada usuario: cliente, nota, repuestos con precio, horas, valor hora, dólar usado |
+| `preferencias` | Valor hora y moneda de cada usuario |
+| `cotizacion` | Última cotización del dólar oficial del Banco Nación |
 | `fotos_auto` | Resultado de la búsqueda automática de fotos por código |
 | bucket `fotos` | Fotos públicas; solo los usuarios habilitados pueden subir o borrar |
+| función `dolar` | Lee la cotización del Banco Nación (código en `supabase/functions/dolar`) |
+| función `fotos` | Busca fotos por código en tiendas de repuestos (código en `supabase/functions/fotos`) |
 | función `admin-usuarios` | Crea usuarios, cambia contraseñas y elimina cuentas (código en `supabase/functions/admin-usuarios`) |
 
 Los precios originales están en `data.json`; la base guarda solo lo que se cambió.
