@@ -47,7 +47,7 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 - El botón **★ Favoritos** muestra su listado: cantidad y nota por repuesto, subtotal y total con recargo, y **Copiar listado** para pegarlo en WhatsApp o un mail. Tocando el nombre se abre la ficha.
 - El listado queda guardado en la base y es privado de cada usuario; no se borra al cerrar la página.
 - El administrador lo habilita por usuario en el panel (casilla **Favoritos**). Los administradores lo tienen siempre.
-- **Compartir favoritos** (Panel admin → Opciones): encendido, todos los usuarios con Favoritos ven y arman un mismo listado, con quién agregó cada repuesto; apagado, cada uno usa el suyo (los listados propios no se borran).
+- **Comparte favoritos** (Panel admin, casilla por usuario): los usuarios marcados usan un mismo listado y cualquiera de ellos agrega o quita repuestos, con quién agregó cada uno; los demás usan su listado propio (que no se borra).
 - Permiso **Consulta**: ve la lista y usa favoritos, pero no puede cambiar precios ni fotos.
 
 ### Configurar

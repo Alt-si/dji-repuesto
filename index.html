@@ -255,11 +255,8 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
  <h2 id="aT">Mi cuenta</h2>
  <p class="note" id="aYo"></p>
  <div id="adm" hidden>
-  <h3 style="margin:22px 0 4px">Opciones</h3>
-  <label style="display:flex;gap:10px;align-items:flex-start;color:inherit;font-size:16px;margin:8px 0"><input type="checkbox" id="optShare" style="width:22px;height:22px;flex:none;margin-top:2px"><span><b>Compartir favoritos</b><br><span class="note">Encendido: todos los usuarios con Favoritos ven y arman un mismo listado, con quién agregó cada repuesto. Apagado: cada uno usa su listado propio (no se borra).</span></span></label>
-  <p class="note" id="optMsg"></p>
   <h3 style="margin:22px 0 4px">Usuarios habilitados</h3>
-  <p class="note">Solo las personas de esta lista pueden editar precios y subir fotos. Las fotos que suben las ve todo el mundo.</p>
+  <p class="note">Solo las personas de esta lista pueden editar precios y subir fotos. Las fotos que suben las ve todo el mundo. Los usuarios con <b>Comparte favoritos</b> tildado usan un mismo listado: cualquiera de ellos agrega o quita repuestos. Los demás usan su listado propio.</p>
   <div id="uList"></div>
   <h3 style="margin:26px 0 4px">Agregar usuario</h3>
   <p class="note">Creás la cuenta y le pasás a la persona su email y contraseña. Después la puede cambiar desde "Mi cuenta".</p>
@@ -632,8 +629,7 @@ fetch('data.json').then(r=>r.json()).then(rows=>{
 const favOwner=()=>FAV_SHARED?'__compartido__':me.email;
 async function loadFavs(){
   if(!canFav){FAVS={};return}
-  const {data:aj}=await sb.from('ajustes_generales').select('valor').eq('clave','compartir_favoritos').maybeSingle();
-  FAV_SHARED=!!(aj&&aj.valor===true);
+  FAV_SHARED=!!(me&&me.comparte_favs);
   const {data,error}=await sb.from('favoritos').select('id,cantidad,nota,creado,por').eq('email',favOwner()).order('creado');
   if(error){toast('No se pudieron cargar los favoritos.');return}
   const m={};(data||[]).forEach(r=>m[r.id]={cantidad:+r.cantidad||1,nota:r.nota||'',creado:r.creado,por:r.por||''});FAVS=m;
@@ -854,7 +850,7 @@ async function saveCfg(e){
 }
 async function setSession(s){
   session=s||null;me=null;
-  if(session){const {data}=await sb.from('editores').select('email,nombre,rol,activo,favoritos').eq('email',(session.user.email||'').toLowerCase()).maybeSingle();me=data||{email:session.user.email,rol:'editor',activo:false}}
+  if(session){const {data}=await sb.from('editores').select('email,nombre,rol,activo,favoritos,comparte_favs').eq('email',(session.user.email||'').toLowerCase()).maybeSingle();me=data||{email:session.user.email,rol:'editor',activo:false}}
   logged=!!(me&&me.activo&&me.rol!=='consulta');assets=logged?{}:null;
   canFav=!!(me&&me.activo&&(me.favoritos||me.rol==='admin'));
   await loadFavs();$('#favBtn').hidden=!canFav;if(!canFav&&favMode){favMode=false}
@@ -886,7 +882,7 @@ async function openLogin(){
 const genPass=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';const r=new Uint32Array(10);crypto.getRandomValues(r);return [...r].map(n=>a[n%a.length]).join('')};
 let users=[];
 async function loadUsers(){
-  const {data,error}=await sb.from('editores').select('email,nombre,rol,activo,favoritos,creado').order('creado');
+  const {data,error}=await sb.from('editores').select('email,nombre,rol,activo,favoritos,comparte_favs,creado').order('creado');
   if(error){$('#uList').textContent='No se pudo cargar la lista de usuarios.';return}
   users=data||[];drawUsers();
 }
@@ -899,6 +895,7 @@ function drawUsers(){
    <div class="row">
     <select data-rol="${e}" aria-label="Permiso de ${e}" ${yo?'disabled':''}><option value="consulta"${u.rol==='consulta'?' selected':''}>Consulta</option><option value="editor"${u.rol==='editor'?' selected':''}>Editor</option><option value="admin"${u.rol==='admin'?' selected':''}>Administrador</option></select>
     <label class="note" style="display:inline-flex;gap:6px;align-items:center;margin:0"><input type="checkbox" data-favu="${e}" ${u.favoritos||u.rol==='admin'?'checked':''} ${u.rol==='admin'?'disabled':''}> Favoritos</label>
+    <label class="note" style="display:inline-flex;gap:6px;align-items:center;margin:0"><input type="checkbox" data-share="${e}" ${u.comparte_favs?'checked':''} ${u.favoritos||u.rol==='admin'?'':'disabled'}> Comparte favoritos</label>
     ${yo?'<span class="note">(vos)</span>':`<button class="btn" data-act="${u.activo?'off':'on'}" data-e="${e}">${u.activo?'Quitar acceso':'Habilitar'}</button>
     <button class="btn" data-act="pw" data-e="${e}">Nueva contraseña</button>
     <button class="btn" data-act="del" data-e="${e}">Eliminar</button>`}
@@ -909,7 +906,7 @@ function openAccount(){
   const isAdm=logged&&me.rol==='admin';
   $('#aT').textContent=isAdm?'Panel de administración':'Mi cuenta';
   $('#aYo').textContent=me?`${me.nombre?me.nombre+' · ':''}${me.email} · ${!me.activo?'sin acceso':me.rol==='admin'?'administrador':me.rol==='consulta'?'consulta':'editor'}${canFav?' · favoritos':''}`:'';
-  $('#adm').hidden=!isAdm;if(isAdm){loadUsers();$('#optShare').checked=FAV_SHARED;$('#optMsg').textContent=''}
+  $('#adm').hidden=!isAdm;if(isAdm)loadUsers();
 }
 async function userAct(act,email,out){
   out.textContent='…';
@@ -941,9 +938,8 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
   }).on('postgres_changes',{event:'*',schema:'public',table:'config'},p=>{if(p.new&&isFinite(p.new.pct)){CONF.pct=+p.new.pct;if(p.new.iva!=null)CONF.iva=+p.new.iva;render();if(openId)drawPane()}}).subscribe();
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadAll().catch(()=>{})});
   sb.channel('usuarios').on('postgres_changes',{event:'*',schema:'public',table:'editores'},()=>{if(session)setSession(session)}).subscribe();
-  let fvT;const favRefresh=()=>{if(!canFav)return;clearTimeout(fvT);fvT=setTimeout(async()=>{await loadFavs();render();if(openId)drawPane();if($('#aov').classList.contains('open')&&$('#optShare'))$('#optShare').checked=FAV_SHARED},400)};
-  sb.channel('favoritos').on('postgres_changes',{event:'*',schema:'public',table:'favoritos'},p=>{const em=(p.new&&p.new.email)||(p.old&&p.old.email);if(FAV_SHARED&&(!em||em==='__compartido__'))favRefresh()})
-    .on('postgres_changes',{event:'*',schema:'public',table:'ajustes_generales'},favRefresh).subscribe();
+  let fvT;const favRefresh=()=>{if(!canFav)return;clearTimeout(fvT);fvT=setTimeout(async()=>{await loadFavs();render();if(openId)drawPane();},400)};
+  sb.channel('favoritos').on('postgres_changes',{event:'*',schema:'public',table:'favoritos'},p=>{const em=(p.new&&p.new.email)||(p.old&&p.old.email);if(FAV_SHARED&&(!em||em==='__compartido__'))favRefresh()}).subscribe();
   sb.auth.getSession().then(({data})=>setSession(data&&data.session));
   sb.auth.onAuthStateChange((ev,s)=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'||ev==='INITIAL_SESSION')setTimeout(()=>setSession(s),0)});
   $('#loginBtn').addEventListener('click',()=>{session?openAccount():openLogin()});
@@ -963,10 +959,6 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
   $('#pwForm').addEventListener('submit',async e=>{e.preventDefault();$('#pwMsg').textContent='Guardando…';
     const {error}=await sb.auth.updateUser({password:$('#pw1').value});
     $('#pwMsg').textContent=error?('No se pudo: '+error.message):'Contraseña cambiada.';if(!error)$('#pw1').value=''});
-  $('#optShare').addEventListener('change',async e=>{const v=e.target.checked;$('#optMsg').textContent='Guardando…';
-    const {error}=await sb.from('ajustes_generales').upsert({clave:'compartir_favoritos',valor:v});
-    if(error){e.target.checked=!v;$('#optMsg').textContent='No se pudo guardar: '+error.message;return}
-    $('#optMsg').textContent=v?'Favoritos compartidos activado.':'Favoritos compartidos desactivado: cada uno ve su listado.';await loadFavs();render()});
   $('#uGen').addEventListener('click',()=>{$('#uPass').value=genPass()});
   $('#uForm').addEventListener('submit',async e=>{e.preventDefault();const m=$('#uMsg');m.textContent='Creando…';
     const email=$('#uMail').value.trim(),password=$('#uPass').value;
@@ -974,7 +966,8 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
       m.textContent=(r.existia?'La cuenta ya existía: le puse esta contraseña y la habilité. ':'Usuario creado. ')+'Pasale: '+email+' / '+password;
       $('#uNombre').value='';$('#uMail').value='';$('#uPass').value='';await loadUsers()}catch(err){m.textContent=err.message}});
   $('#uList').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const em=b.dataset.e;userAct(b.dataset.act,em,document.querySelector(`[data-out="${CSS.escape(em)}"]`))});
-  $('#uList').addEventListener('change',async e=>{const fu=e.target.closest('[data-favu]');if(fu){const out=document.querySelector(`[data-out="${CSS.escape(fu.dataset.favu)}"]`);const {error}=await sb.from('editores').update({favoritos:fu.checked}).eq('email',fu.dataset.favu);out.textContent=error?'No se pudo: '+(error.message||''):(fu.checked?'Favoritos habilitado.':'Favoritos deshabilitado.');if(error)loadUsers();return}
+  $('#uList').addEventListener('change',async e=>{const sh=e.target.closest('[data-share]');if(sh){const out=document.querySelector(`[data-out="${CSS.escape(sh.dataset.share)}"]`);const {error}=await sb.from('editores').update({comparte_favs:sh.checked}).eq('email',sh.dataset.share);out.textContent=error?'No se pudo: '+(error.message||''):(sh.checked?'Ahora comparte el listado de favoritos con el grupo.':'Vuelve a su listado propio de favoritos.');if(error)loadUsers();return}
+    const fu=e.target.closest('[data-favu]');if(fu){const out=document.querySelector(`[data-out="${CSS.escape(fu.dataset.favu)}"]`);const {error}=await sb.from('editores').update({favoritos:fu.checked}).eq('email',fu.dataset.favu);out.textContent=error?'No se pudo: '+(error.message||''):(fu.checked?'Favoritos habilitado.':'Favoritos deshabilitado.');loadUsers();return}
     const s=e.target.closest('[data-rol]');if(!s)return;const out=document.querySelector(`[data-out="${CSS.escape(s.dataset.rol)}"]`);
     const {error}=await sb.from('editores').update({rol:s.value}).eq('email',s.dataset.rol);out.textContent=error?('No se pudo: '+(error.message||'')):'Permiso actualizado.';if(error)loadUsers()});
 }else{
