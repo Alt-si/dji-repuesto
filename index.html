@@ -86,6 +86,15 @@ label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
 textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .txt{white-space:pre-wrap;background:var(--soft);border-radius:12px;padding:14px;line-height:1.55}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+ .dlg{height:auto;bottom:auto;top:8vh;right:50%;transform:translateX(50%);width:min(440px,94%);border-radius:16px;max-height:86vh}
+.ulist{display:grid;gap:8px;margin-top:10px}
+.urow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.urow.off{opacity:.65;border-style:dashed}
+.urow .who{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.urow .who b{overflow-wrap:anywhere}
+.urow .row select,.urow .row .btn{height:40px;font-size:14px}
+.st{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.st.on{background:var(--field);color:#fff}.st.off{background:var(--soft);color:var(--mut)}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;z-index:40;display:none;gap:12px;align-items:center;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer}
 .note{font-size:13px;color:var(--mut)}
@@ -145,7 +154,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <button class="btn" id="editBtn" aria-pressed="false">Modo edición</button>
   <button class="btn pri" id="addBtn">+ Agregar</button>
   <button class="btn" id="csvBtn">Exportar CSV</button>
-  <button class="btn" id="loginBtn" hidden>Ingresar para editar</button>
+  <button class="btn" id="loginBtn" hidden>Ingresar</button>
  </div>
 </div></div>
 
@@ -160,15 +169,42 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 </main>
 
 <div class="ov" id="ov"><div class="pane" role="dialog" aria-modal="true" aria-labelledby="dName" id="pane"></div></div>
-<div class="ov" id="lov"><form class="pane" id="lform" style="height:auto;bottom:auto;top:10vh;right:50%;transform:translateX(50%);width:min(420px,94%);border-radius:16px" aria-labelledby="lt">
+<div class="ov" id="lov"><form class="pane dlg" id="lform" aria-labelledby="lt">
  <button type="button" class="x" id="lClose" aria-label="Cerrar">×</button>
- <h2 id="lt">Ingresar para editar</h2>
- <p class="note">Solo las personas con usuario pueden cambiar precios y subir fotos. Todos los demás ven la lista.</p>
+ <h2 id="lt">Ingresar</h2>
+ <p class="note" id="lIntro">Con tu usuario podés cambiar precios y subir fotos. Sin usuario, la lista se puede ver igual.</p>
+ <div id="lNombreBox" hidden><label for="lNombre">Tu nombre</label><input class="fi" id="lNombre" autocomplete="name"></div>
  <label for="lMail">Email</label><input class="fi" id="lMail" type="email" autocomplete="username" required>
- <label for="lPass">Contraseña</label><input class="fi" id="lPass" type="password" autocomplete="current-password" required>
+ <label for="lPass">Contraseña</label><input class="fi" id="lPass" type="password" autocomplete="current-password" minlength="8" required>
  <p class="note" id="lErr" style="color:var(--acc)"></p>
- <div class="acts"><button class="btn pri" type="submit">Ingresar</button></div>
+ <div class="acts"><button class="btn pri" type="submit" id="lGo">Ingresar</button></div>
+ <p class="note" id="lPie">¿No tenés usuario? Pedíselo al administrador de la lista.</p>
 </form></div>
+<div class="ov" id="aov"><div class="pane" id="apane" role="dialog" aria-modal="true" aria-labelledby="aT">
+ <button type="button" class="x" id="aClose" aria-label="Cerrar">×</button>
+ <h2 id="aT">Mi cuenta</h2>
+ <p class="note" id="aYo"></p>
+ <div id="adm" hidden>
+  <h3 style="margin:22px 0 4px">Usuarios habilitados</h3>
+  <p class="note">Solo las personas de esta lista pueden editar precios y subir fotos. Las fotos que suben las ve todo el mundo.</p>
+  <div id="uList"></div>
+  <h3 style="margin:26px 0 4px">Agregar usuario</h3>
+  <p class="note">Creás la cuenta y le pasás a la persona su email y contraseña. Después la puede cambiar desde "Mi cuenta".</p>
+  <form id="uForm">
+   <label for="uNombre">Nombre</label><input class="fi" id="uNombre" autocomplete="off">
+   <label for="uMail">Email</label><input class="fi" id="uMail" type="email" autocomplete="off" required>
+   <label for="uPass">Contraseña inicial</label>
+   <div class="row"><input class="fi" id="uPass" autocomplete="off" minlength="8" required style="flex:1"><button type="button" class="btn" id="uGen">Generar</button></div>
+   <label for="uRol">Permiso</label>
+   <select class="fi" id="uRol"><option value="editor">Editor: cambia precios y sube fotos</option><option value="admin">Administrador: además habilita usuarios</option></select>
+   <p class="note" id="uMsg"></p>
+   <div class="acts"><button class="btn pri" type="submit">Crear usuario</button></div>
+  </form>
+ </div>
+ <h3 style="margin:26px 0 4px">Cambiar mi contraseña</h3>
+ <form id="pwForm"><label for="pw1">Contraseña nueva (mínimo 8 caracteres)</label><input class="fi" id="pw1" type="password" autocomplete="new-password" minlength="8" required>
+ <p class="note" id="pwMsg"></p><div class="acts"><button class="btn" type="submit">Guardar contraseña</button><button class="btn" type="button" id="aSalir">Cerrar sesión</button></div></form>
+</div></div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="tBtn" hidden></button></div>
 
 <script>
@@ -181,7 +217,7 @@ const idOf=c=>String(c).trim().replace(/[^A-Za-z0-9_.~:@+-]/g,'_').replace(/^\.{
 const parseNum=s=>{s=String(s).trim().replace(/usd/i,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?Math.round(n*100)/100:null};
 const PER=60;
 let BASE=[],EDITS={},CONF={pct:10},items=[],view=[],page=0,cat='',editMode=false,openId=null;
-let sb=null,assets=null,sample=null,logged=false;
+let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true;
 const CFG=window.REPUESTOS_CONFIG||{};
 const BUCKET='fotos';
 const imgUrl=p=>p?(sb?sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl:''):'';
@@ -189,7 +225,7 @@ const imgUrl=p=>p?(sb?sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl:'')
 /* ---------- datos ---------- */
 function merge(){
   const out=[];
-  BASE.forEach((b,i)=>{const e=EDITS[b.id];if(e&&e.deleted)return;out.push(Object.assign({i},b,e?{d:e.d??b.d,p:e.p??b.p,img:e.img,info:e.info,edited:!!(e.d!=null||e.p!=null)}:{}))});
+  BASE.forEach((b,i)=>{const e=EDITS[b.id];if(e&&e.deleted)return;out.push(Object.assign({i},b,e?{d:e.d??b.d,p:e.p??b.p,img:e.img,info:e.info,por:e.por,t:e.t,edited:!!(e.d!=null||e.p!=null)}:{}))});
   Object.values(EDITS).filter(e=>e.added&&!e.deleted).forEach(e=>out.push({i:1e6+(e.t||0),id:e.id,c:e.c,d:e.d||'',p:e.p||0,img:e.img,info:e.info,added:true}));
   out.forEach(x=>{x.k=catOf(x.d,x.c);x.ms=modelsOf(x.d);x.s=(x.c+' '+x.d).toLowerCase()});
   items=out;
@@ -234,7 +270,7 @@ function full(){merge();chips();models();render();if(openId)drawPane()}
 /* ---------- guardado ---------- */
 const queues={};
 function save(id,patch){
-  const cur=Object.assign({},EDITS[id]||{id},patch,{t:Date.now()});
+  const cur=Object.assign({},EDITS[id]||{id},patch,{t:Date.now()},me?{por:me.nombre||me.email}:{});
   EDITS[id]=cur;full();
   if(!sb){localSave();return Promise.resolve()}
   if(!logged){toast('Ingresá con tu usuario para guardar cambios.');return Promise.resolve()}
@@ -266,6 +302,7 @@ function drawPane(){
   </div>
   <p class="note">${assets?'Abrí “Buscar foto en Google”, hacé clic derecho sobre la imagen → <b>Copiar imagen</b>, volvé acá y pegala con Ctrl+V. Queda guardada en este producto.':(sb?'Para cargar fotos tenés que ingresar con tu usuario.':'Para cargar fotos hace falta conectar la lista a Supabase.')}</p>
   <div class="prices"><div><small>Precio de lista</small><strong>${usd(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${usd(fin(x.p))}</strong></div></div>
+  ${x.por?`<p class="note">Última modificación: ${esc(x.por)} · ${esc(new Date(x.t).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}))}</p>`:''}
   <h3 style="margin:20px 0 6px">Información del repuesto</h3>
   <div class="txt" id="pTxt"></div>
   <div class="acts">${sample?'<button class="btn pri" id="pAi">Explicar con IA</button>':''}<button class="btn" id="pEditInfo">Editar información</button></div>
@@ -391,12 +428,71 @@ fetch('data.json').then(r=>r.json()).then(rows=>{
   full();
 }).catch(()=>{$('#count').textContent='No se pudo cargar la lista.'});
 
-function setLogged(v){
-  logged=!!v;assets=logged?{}:null;
-  $('#loginBtn').hidden=false;$('#loginBtn').textContent=logged?'Salir':'Ingresar para editar';
+async function setSession(s){
+  session=s||null;me=null;
+  if(session){const {data}=await sb.from('editores').select('email,nombre,rol,activo').eq('email',(session.user.email||'').toLowerCase()).maybeSingle();me=data||{email:session.user.email,rol:'editor',activo:false}}
+  logged=!!(me&&me.activo);assets=logged?{}:null;
+  const isAdm=logged&&me.rol==='admin';
+  $('#loginBtn').hidden=false;$('#loginBtn').textContent=!session?'Ingresar':isAdm?'Panel admin':'Mi cuenta';
   ['#editBtn','#addBtn'].forEach(s=>$(s).hidden=!logged);$('#pct').disabled=!logged;
   if(!logged&&editMode)$('#editBtn').click();
+  if(session&&!logged)$('#sync').textContent='Tu usuario no está habilitado para editar. Pedíselo al administrador.';
   if(openId)drawPane();
+  if($('#aov').classList.contains('open'))openAccount();
+}
+async function fn(body){
+  const {data,error}=await sb.functions.invoke('admin-usuarios',{body});
+  if(error){let m=error.message;try{const j=await error.context.json();if(j&&j.error)m=j.error}catch(e){}throw new Error(m)}
+  if(data&&data.error)throw new Error(data.error);
+  return data;
+}
+async function openLogin(){
+  $('#lErr').textContent='';$('#lov').classList.add('open');
+  try{hayAdmin=(await fn({accion:'estado'})).hayAdmin}catch(e){hayAdmin=true}
+  $('#lt').textContent=hayAdmin?'Ingresar':'Crear la cuenta administradora';
+  $('#lIntro').textContent=hayAdmin?'Con tu usuario podés cambiar precios y subir fotos. Sin usuario, la lista se puede ver igual.':'Todavía no hay administrador. La cuenta que crees ahora va a poder habilitar a los demás usuarios.';
+  $('#lNombreBox').hidden=hayAdmin;$('#lGo').textContent=hayAdmin?'Ingresar':'Crear y entrar';
+  $('#lPass').autocomplete=hayAdmin?'current-password':'new-password';
+  $('#lPie').hidden=!hayAdmin;
+  setTimeout(()=>($('#lNombreBox').hidden?$('#lMail'):$('#lNombre')).focus(),30);
+}
+const genPass=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';const r=new Uint32Array(10);crypto.getRandomValues(r);return [...r].map(n=>a[n%a.length]).join('')};
+let users=[];
+async function loadUsers(){
+  const {data,error}=await sb.from('editores').select('email,nombre,rol,activo,creado').order('creado');
+  if(error){$('#uList').textContent='No se pudo cargar la lista de usuarios.';return}
+  users=data||[];drawUsers();
+}
+function drawUsers(){
+  const self=(me&&me.email||'').toLowerCase();
+  $('#uList').className='ulist';
+  $('#uList').innerHTML=users.length?users.map(u=>{const e=esc(u.email),yo=u.email===self;return `<div class="urow${u.activo?'':' off'}">
+   <div class="who"><b>${esc(u.nombre||u.email)}</b><span class="st ${u.activo?'on':'off'}">${u.activo?'Habilitado':'Sin acceso'}</span></div>
+   ${u.nombre?`<span class="note">${e}</span>`:''}
+   <div class="row">
+    <select data-rol="${e}" aria-label="Permiso de ${e}" ${yo?'disabled':''}><option value="editor"${u.rol==='editor'?' selected':''}>Editor</option><option value="admin"${u.rol==='admin'?' selected':''}>Administrador</option></select>
+    ${yo?'<span class="note">(vos)</span>':`<button class="btn" data-act="${u.activo?'off':'on'}" data-e="${e}">${u.activo?'Quitar acceso':'Habilitar'}</button>
+    <button class="btn" data-act="pw" data-e="${e}">Nueva contraseña</button>
+    <button class="btn" data-act="del" data-e="${e}">Eliminar</button>`}
+   </div><div class="note" data-out="${e}"></div></div>`}).join(''):'<p class="note">No hay usuarios todavía.</p>';
+}
+function openAccount(){
+  $('#aov').classList.add('open');
+  const isAdm=logged&&me.rol==='admin';
+  $('#aT').textContent=isAdm?'Panel de administración':'Mi cuenta';
+  $('#aYo').textContent=me?`${me.nombre?me.nombre+' · ':''}${me.email} · ${!me.activo?'sin acceso para editar':me.rol==='admin'?'administrador':'editor'}`:'';
+  $('#adm').hidden=!isAdm;if(isAdm)loadUsers();
+}
+async function userAct(act,email,out){
+  out.textContent='…';
+  try{
+    if(act==='on'||act==='off'){const {error}=await sb.from('editores').update({activo:act==='on'}).eq('email',email);if(error)throw error;out.textContent='';await loadUsers()}
+    else if(act==='pw'){const p=genPass();await fn({accion:'cambiar_clave',email,password:p});out.textContent='Contraseña nueva: '+p+' (pasásela a la persona)'}
+    else if(act==='del'){
+      const b=document.querySelector(`[data-act="del"][data-e="${CSS.escape(email)}"]`);
+      if(b&&!b.dataset.sure){b.dataset.sure='1';b.textContent='¿Seguro? Tocá de nuevo';out.textContent='';return}
+      await fn({accion:'eliminar_usuario',email});await loadUsers();toast('Usuario eliminado.')}
+  }catch(e){out.textContent=(e&&e.message)||'No se pudo.';}
 }
 async function loadAll(){
   const m={};let from=0;
@@ -415,15 +511,35 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
     if(BASE.length)full();
   }).on('postgres_changes',{event:'*',schema:'public',table:'config'},p=>{if(p.new&&isFinite(p.new.pct)){CONF.pct=+p.new.pct;if(document.activeElement!==$('#pct'))$('#pct').value=p.new.pct;render();if(openId)drawPane()}}).subscribe();
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadAll().catch(()=>{})});
-  sb.auth.getSession().then(({data})=>setLogged(data&&data.session));
-  sb.auth.onAuthStateChange((_e,s)=>setLogged(s));
-  $('#loginBtn').addEventListener('click',async()=>{if(logged){await sb.auth.signOut();toast('Sesión cerrada.');return}$('#lErr').textContent='';$('#lov').classList.add('open');setTimeout(()=>$('#lMail').focus(),30)});
+  sb.channel('usuarios').on('postgres_changes',{event:'*',schema:'public',table:'editores'},()=>{if(session)setSession(session)}).subscribe();
+  sb.auth.getSession().then(({data})=>setSession(data&&data.session));
+  sb.auth.onAuthStateChange((ev,s)=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'||ev==='INITIAL_SESSION')setTimeout(()=>setSession(s),0)});
+  $('#loginBtn').addEventListener('click',()=>{session?openAccount():openLogin()});
   $('#lClose').addEventListener('click',()=>$('#lov').classList.remove('open'));
   $('#lov').addEventListener('click',e=>{if(e.target.id==='lov')$('#lov').classList.remove('open')});
-  $('#lform').addEventListener('submit',async e=>{e.preventDefault();$('#lErr').textContent='Ingresando…';
-    const {error}=await sb.auth.signInWithPassword({email:$('#lMail').value.trim(),password:$('#lPass').value});
+  $('#aClose').addEventListener('click',()=>$('#aov').classList.remove('open'));
+  $('#aov').addEventListener('click',e=>{if(e.target.id==='aov')$('#aov').classList.remove('open')});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#lov').classList.remove('open');$('#aov').classList.remove('open')}});
+  $('#lform').addEventListener('submit',async e=>{e.preventDefault();
+    const email=$('#lMail').value.trim(),password=$('#lPass').value;
+    if(!hayAdmin){$('#lErr').textContent='Creando la cuenta…';try{await fn({accion:'crear_admin_inicial',email,password,nombre:$('#lNombre').value.trim()})}catch(err){$('#lErr').textContent=err.message;return}}
+    $('#lErr').textContent='Ingresando…';
+    const {error}=await sb.auth.signInWithPassword({email,password});
     if(error){$('#lErr').textContent='Email o contraseña incorrectos.';return}
-    $('#lPass').value='';$('#lov').classList.remove('open');toast('Listo, ya podés editar.')});
+    $('#lPass').value='';$('#lov').classList.remove('open');toast(hayAdmin?'Sesión iniciada.':'Listo: sos el administrador. Desde "Panel admin" habilitás a los demás.')});
+  $('#aSalir').addEventListener('click',async()=>{await sb.auth.signOut();$('#aov').classList.remove('open');toast('Sesión cerrada.')});
+  $('#pwForm').addEventListener('submit',async e=>{e.preventDefault();$('#pwMsg').textContent='Guardando…';
+    const {error}=await sb.auth.updateUser({password:$('#pw1').value});
+    $('#pwMsg').textContent=error?('No se pudo: '+error.message):'Contraseña cambiada.';if(!error)$('#pw1').value=''});
+  $('#uGen').addEventListener('click',()=>{$('#uPass').value=genPass()});
+  $('#uForm').addEventListener('submit',async e=>{e.preventDefault();const m=$('#uMsg');m.textContent='Creando…';
+    const email=$('#uMail').value.trim(),password=$('#uPass').value;
+    try{const r=await fn({accion:'crear_usuario',email,password,nombre:$('#uNombre').value.trim(),rol:$('#uRol').value});
+      m.textContent=(r.existia?'La cuenta ya existía: le puse esta contraseña y la habilité. ':'Usuario creado. ')+'Pasale: '+email+' / '+password;
+      $('#uNombre').value='';$('#uMail').value='';$('#uPass').value='';await loadUsers()}catch(err){m.textContent=err.message}});
+  $('#uList').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const em=b.dataset.e;userAct(b.dataset.act,em,document.querySelector(`[data-out="${CSS.escape(em)}"]`))});
+  $('#uList').addEventListener('change',async e=>{const s=e.target.closest('[data-rol]');if(!s)return;const out=document.querySelector(`[data-out="${CSS.escape(s.dataset.rol)}"]`);
+    const {error}=await sb.from('editores').update({rol:s.value}).eq('email',s.dataset.rol);out.textContent=error?('No se pudo: '+(error.message||'')):'Permiso actualizado.';if(error)loadUsers()});
 }else{
   localLoad();$('#sync').textContent='Sin base conectada: los cambios se guardan solo en este navegador.';
 }

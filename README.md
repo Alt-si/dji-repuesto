@@ -28,25 +28,29 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 - Los cambios aparecen en vivo para todos los que tienen la lista abierta.
 - Las fotos se achican antes de subirlas (máximo 900 px, JPG) y se guardan en el bucket público `fotos`.
 
+### Usuarios y panel de administración
+
+- **Primer ingreso:** la primera vez que alguien toca "Ingresar", la página ofrece crear la **cuenta administradora**. Solo funciona mientras no exista ningún administrador.
+- **Panel admin** (botón arriba, solo administradores):
+  - crear usuarios con email y contraseña inicial (botón "Generar" para una contraseña al azar);
+  - darles permiso de **Editor** (cambia precios y sube fotos) o **Administrador** (además maneja usuarios);
+  - **Quitar acceso / Habilitar**, **Nueva contraseña** y **Eliminar**.
+- Cada usuario puede cambiar su contraseña desde **Mi cuenta**.
+- Siempre tiene que quedar al menos un administrador activo; la base lo impide.
+- Las fotos que sube cualquier editor quedan públicas para todos los que ven la lista.
+- En cada ficha figura quién hizo la última modificación y cuándo.
+
 ### Base de datos
 
-| Tabla | Para qué |
+| Tabla / función | Para qué |
 |---|---|
-| `edits` | Un registro por producto editado o agregado (`data`: nombre, precio, foto, información, eliminado) |
+| `edits` | Un registro por producto editado o agregado (`data`: nombre, precio, foto, información, eliminado, quién y cuándo) |
 | `config` | El porcentaje de recargo (`id = 'main'`) |
-| `editores` | Emails autorizados para editar |
+| `editores` | Usuarios con permiso: email, nombre, rol (`admin`/`editor`), activo |
+| bucket `fotos` | Fotos públicas; solo los usuarios habilitados pueden subir o borrar |
+| función `admin-usuarios` | Crea usuarios, cambia contraseñas y elimina cuentas (código en `supabase/functions/admin-usuarios`) |
 
 Los precios originales están en `data.json`; la base guarda solo lo que se cambió.
-
-### Agregar un editor
-
-1. En Supabase: **Authentication → Users → Add user → Create new user**, con email y contraseña (tildar "Auto Confirm User").
-2. En **SQL Editor**, ejecutar:
-   ```sql
-   insert into public.editores (email) values ('nombre@ejemplo.com');
-   ```
-
-Para quitar a alguien: `delete from public.editores where email = 'nombre@ejemplo.com';`
 
 ### Aviso del plan gratis
 
