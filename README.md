@@ -53,6 +53,7 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 
 Botón **Configurar** (usuarios con sesión):
 - **Recargo sobre el precio de lista (%)** e **IVA (%)**: valen para todos; solo editores y administradores los cambian.
+- **Actualizar precios de lista** (editores): aumento o baja en % por rubro, por equipo y/o por texto en el código o nombre (o a todos). Muestra cuántos repuestos cambian y un ejemplo antes de aplicar; cada cambio queda en el historial y el último se puede **deshacer** (tabla `ajustes_precio`).
 - **Valor hora de mano de obra** (pesos o USD): es de cada usuario y se usa en sus presupuestos nuevos.
 
 En la lista se ve solo el **precio final** (lista + recargo), marcado **+ IVA**. El precio de lista aparece únicamente en Modo edición. En cada presupuesto se tilda **Agregar IVA** si corresponde.

@@ -89,6 +89,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .txt{white-space:pre-wrap;background:var(--soft);border-radius:12px;padding:14px;line-height:1.55}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
  .dlg{height:auto;bottom:auto;top:8vh;right:50%;transform:translateX(50%);width:min(440px,94%);border-radius:16px;max-height:86vh}
+.hist{display:grid;gap:6px;margin-top:12px}.hist div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}.hist .off{opacity:.6;text-decoration:line-through}
 .ulist{display:grid;gap:8px;margin-top:10px}
 .urow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
 .urow.off{opacity:.65;border-style:dashed}
@@ -112,7 +113,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .fav .sub{text-align:right;white-space:nowrap}.fav .sub strong{color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
 .favtot{display:flex;justify-content:flex-end;gap:16px;padding:14px 0;font-size:18px}
 .dol{background:rgba(255,255,255,.1);padding:8px 14px;border-radius:12px;display:grid;gap:2px;font-size:15px}
-.dol small{color:#cfe6dc;font-size:13px}.dol div{display:flex;gap:14px;flex-wrap:wrap}.dol b{font-size:20px;white-space:nowrap}.dol .dc b{font-size:15px;font-weight:500}
+.dol small{color:#cfe6dc;font-size:13px}.dol div{display:flex;gap:14px;flex-wrap:wrap}.dol b{font-size:20px;white-space:nowrap}.dol .dv{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}.dol .dv span{display:grid}
 .seg{display:inline-flex}.seg .btn{border-radius:0}.seg .btn:first-child{border-radius:10px 0 0 10px}.seg .btn:last-child{border-radius:0 10px 10px 0;border-left:0}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px}
 .addbox{position:relative}.sug{position:absolute;left:0;right:0;top:100%;z-index:6;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:340px;overflow:auto}
@@ -171,7 +172,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <h1>Lista de precios de repuestos</h1>
   <p class="sub" id="sub">Vigente desde el 18/11/2026 hasta nuevo aviso · precios en USD</p>
  </div>
- <div class="dol" id="dol" hidden><small>Dólar oficial Banco Nación</small><div><span>Venta <b id="dVenta"></b></span><span class="dc">Compra <b id="dCompra"></b></span></div><small id="dFecha"></small></div>
+ <div class="dol" id="dol" hidden><small>Dólar oficial Banco Nación</small><div class="dv"><span><small>Compra</small><b id="dCompra"></b></span><span><small>Venta</small><b id="dVenta"></b></span></div><small id="dFecha"></small></div>
 </div></header>
 
 <div class="bar"><div class="wrap">
@@ -285,6 +286,19 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <div><label for="ivaIn">IVA (%)</label><input class="fi" id="ivaIn" type="number" min="0" max="100" step="0.5" inputmode="decimal"></div>
  </div>
  <p class="note" id="cEj"></p>
+ <div id="aumBox" hidden>
+  <h3 style="margin:22px 0 0">Actualizar precios de lista</h3>
+  <p class="note">Aumenta (o baja, con un número negativo) el precio de lista de los repuestos que elijas. El recargo y el IVA se siguen sumando después.</p>
+  <div class="pgrid">
+   <div><label for="aRubro">Rubro</label><select class="fi" id="aRubro"></select></div>
+   <div><label for="aEquipo">Equipo</label><select class="fi" id="aEquipo"></select></div>
+   <div><label for="aTexto">Código o nombre contiene (opcional)</label><input class="fi" id="aTexto" placeholder="ej. YC.ST, propeller, D12000i" autocomplete="off"></div>
+   <div><label for="aPct">Aumento (%)</label><input class="fi" id="aPct" type="number" step="0.5" min="-90" max="500" inputmode="decimal" placeholder="ej. 8"></div>
+  </div>
+  <p class="note" id="aPrev"></p>
+  <div class="acts"><button type="button" class="btn pri" id="aGo" disabled>Aplicar aumento</button></div>
+  <div id="aHist"></div>
+ </div>
  <h3 style="margin:20px 0 0">Mano de obra</h3>
  <p class="note">Tu valor hora. Se usa en tus presupuestos nuevos.</p>
  <div class="pgrid">
@@ -492,7 +506,9 @@ $('#model').addEventListener('change',()=>{page=0;render()});
 $('#sort').addEventListener('change',()=>{page=0;render()});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;cat=b.dataset.k;page=0;chips();render()});
 $('#pager').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(!b||b.disabled)return;page=+b.dataset.pg;render();$('#tbl').scrollIntoView({block:'start'})});
-$('#cfgBtn').addEventListener('click',openCfg);$('#cform').addEventListener('submit',saveCfg);$('#cClose').addEventListener('click',()=>$('#cov').classList.remove('open'));$('#cov').addEventListener('click',e=>{if(e.target.id==='cov')$('#cov').classList.remove('open')});
+$('#cfgBtn').addEventListener('click',openCfg);
+['#aRubro','#aEquipo'].forEach(s=>$(s).addEventListener('change',aumPrev));['#aTexto','#aPct'].forEach(s=>$(s).addEventListener('input',aumPrev));
+$('#aGo').addEventListener('click',aumApply);$('#aHist').addEventListener('click',e=>{const b=e.target.closest('[data-undo]');if(b)aumUndo(b.dataset.undo,b)});$('#cform').addEventListener('submit',saveCfg);$('#cClose').addEventListener('click',()=>$('#cov').classList.remove('open'));$('#cov').addEventListener('click',e=>{if(e.target.id==='cov')$('#cov').classList.remove('open')});
 $('#presBtn').addEventListener('click',()=>{presMode=!presMode;if(presMode)favMode=false;$('#presBtn').classList.toggle('on',presMode);$('#favBtn').classList.remove('on');render();window.scrollTo({top:0})});
 document.querySelectorAll('[data-mon]').forEach(b=>b.addEventListener('click',()=>{
   if(b.dataset.mon==='ARS'&&!TC()){toast('Todavía no hay cotización del dólar.');return}
@@ -751,9 +767,73 @@ function presPrint(){
    ${k.dol?`<p>Equivale a ${esc(usd(k.totUSD))}. Dólar oficial Banco Nación venta: ${esc(ars(k.dol))}.</p>`:''}${p.nota?`<p>${esc(p.nota)}</p>`:''}`;
   window.print();
 }
+function aumInit(){
+  const n={},m={};items.forEach(x=>{n[x.k]=(n[x.k]||0)+1;x.ms.forEach(v=>m[v]=(m[v]||0)+1)});
+  $('#aRubro').innerHTML='<option value="">Todos los rubros</option>'+CATS.filter(c=>!c.alias&&n[c.k]).map(c=>`<option value="${c.k}">${esc(c.n)} (${n[c.k]})</option>`).join('');
+  const ks=Object.keys(m).sort((a,b)=>(a[0]===b[0]?parseInt(a.slice(1))-parseInt(b.slice(1)):a.localeCompare(b)));
+  $('#aEquipo').innerHTML='<option value="">Todos los equipos</option>'+ks.map(k=>`<option value="${esc(k)}">${esc(k)} (${m[k]})</option>`).join('');
+  $('#aTexto').value='';$('#aPct').value='';aumPrev();aumHist();
+}
+function aumTargets(){
+  const r=$('#aRubro').value,e=$('#aEquipo').value,w=$('#aTexto').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter(x=>(!r||x.k===r)&&(!e||x.ms.includes(e))&&w.every(q=>x.s.includes(q)));
+}
+function aumDesc(){
+  const r=$('#aRubro').value,e=$('#aEquipo').value,t=$('#aTexto').value.trim(),parts=[];
+  if(r)parts.push(CAT_BY[r].n);if(e)parts.push(e);if(t)parts.push('"'+t+'"');
+  return parts.length?parts.join(' · '):'Todos los repuestos';
+}
+function aumPrev(){
+  const ts=aumTargets(),v=parseFloat($('#aPct').value),b=$('#aGo');delete b.dataset.sure;
+  if(!ts.length){$('#aPrev').textContent='Ningún repuesto coincide.';b.disabled=true;b.textContent='Aplicar aumento';return}
+  if(!isFinite(v)||v===0||v<-90||v>500){$('#aPrev').textContent=`Coinciden ${ts.length.toLocaleString('es-AR')} repuestos. Poné el porcentaje.`;b.disabled=true;b.textContent='Aplicar aumento';return}
+  const x=ts[0],np=r2(x.p*(1+v/100));
+  $('#aPrev').textContent=`${aumDesc()}: ${ts.length.toLocaleString('es-AR')} repuestos. Ejemplo: ${x.d} pasa de ${usd(x.p)} a ${usd(np)} de lista (${usd(fin(x.p))} → ${usd(fin(np))} final + IVA).`;
+  b.disabled=false;b.textContent=`Aplicar ${v>0?'+':''}${fmt.format(v).replace(/,00$/,'')}% a ${ts.length.toLocaleString('es-AR')} repuestos`;
+}
+async function aumApply(){
+  const b=$('#aGo');if(!b.dataset.sure){b.dataset.sure='1';b.textContent='¿Seguro? Tocá de nuevo para aplicar';return}
+  const ts=aumTargets(),v=parseFloat($('#aPct').value);if(!ts.length||!isFinite(v)||v===0)return;
+  b.disabled=true;b.textContent='Aplicando…';
+  const previos={},filas=[],now=Date.now(),por=me.nombre||me.email;
+  ts.forEach(x=>{const e=EDITS[x.id];previos[x.id]=e&&e.p!=null?e.p:null;filas.push(Object.assign({},e||{id:x.id},{p:r2(x.p*(1+v/100)),t:now,por}))});
+  const {error:e1}=await sb.from('ajustes_precio').insert({email:me.email,descripcion:aumDesc(),porcentaje:v,cantidad:ts.length,previos});
+  if(e1){$('#aPrev').textContent='No se pudo registrar el aumento: '+e1.message;b.disabled=false;delete b.dataset.sure;b.textContent='Aplicar aumento';return}
+  const err=await aumWrite(filas);
+  if(err){$('#aPrev').textContent='Se aplicó solo en parte: '+err+'. Probá de nuevo o deshacé el aumento.'}else{toast(`Precios actualizados: ${ts.length} repuestos.`)}
+  full();$('#aPct').value='';aumPrev();aumHist();
+}
+async function aumWrite(filas){
+  const ts=new Date().toISOString();
+  for(let i=0;i<filas.length;i+=400){
+    const ch=filas.slice(i,i+400);
+    const {error}=await sb.from('edits').upsert(ch.map(d=>({id:d.id,data:d,updated_at:ts})));
+    if(error)return error.message;
+    ch.forEach(d=>{EDITS[d.id]=d});
+  }
+  return null;
+}
+async function aumHist(){
+  const {data}=await sb.from('ajustes_precio').select('id,creado,email,descripcion,porcentaje,cantidad,deshecho').order('creado',{ascending:false}).limit(8);
+  const hs=data||[];const ult=hs.find(a=>!a.deshecho);
+  $('#aHist').innerHTML=hs.length?'<p class="note" style="margin:14px 0 0">Últimos cambios</p><div class="hist">'+hs.map(a=>`<div><span class="${a.deshecho?'off':''}">${esc(new Date(a.creado).toLocaleDateString('es-AR'))} · ${esc(a.descripcion)} · ${+a.porcentaje>0?'+':''}${esc(fmt.format(+a.porcentaje).replace(/,00$/,''))}% · ${esc(a.cantidad)} repuestos</span>${a.deshecho?'<span class="note">deshecho</span>':ult&&ult.id===a.id?`<button type="button" class="btn" data-undo="${esc(a.id)}">Deshacer</button>`:''}</div>`).join('')+'</div>':'';
+}
+async function aumUndo(id,btn){
+  if(!btn.dataset.sure){btn.dataset.sure='1';btn.textContent='¿Seguro? Tocá de nuevo';return}
+  btn.disabled=true;btn.textContent='Deshaciendo…';
+  const {data:a,error}=await sb.from('ajustes_precio').select('previos,deshecho').eq('id',id).maybeSingle();
+  if(error||!a||a.deshecho){toast('No se pudo deshacer.');aumHist();return}
+  const now=Date.now(),por=me.nombre||me.email;
+  const filas=Object.entries(a.previos||{}).map(([pid,pv])=>Object.assign({},EDITS[pid]||{id:pid},{p:pv,t:now,por}));
+  const err=await aumWrite(filas);
+  if(err){toast('Se deshizo solo en parte: '+err);aumHist();return}
+  await sb.from('ajustes_precio').update({deshecho:new Date().toISOString()}).eq('id',id);
+  full();aumPrev();aumHist();toast('Aumento deshecho: precios anteriores restaurados.');
+}
 function openCfg(){
   $('#pct').value=CONF.pct;$('#ivaIn').value=CONF.iva;$('#pct').disabled=!logged;$('#ivaIn').disabled=!logged;
   $('#cGlobalNote').textContent=logged?'Valen para todos los que usan la lista.':'Valen para todos; solo los editores los pueden cambiar.';
+  $('#aumBox').hidden=!logged;if(logged)aumInit();
   $('#cfValor').value=PREF.valor_hora||'';$('#cfMon').value=PREF.moneda_hora||'ARS';$('#cMsg').textContent='';cfgEj();$('#cov').classList.add('open');
 }
 async function saveCfg(e){
