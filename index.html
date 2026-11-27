@@ -728,7 +728,7 @@ function presText(p){
   L.push('Repuestos: '+usd(k.rep)+(k.dol?' / '+ars(k.repARS):''));
   if(k.mo)L.push('Mano de obra: '+(k.dol?ars(k.moARS):usd(k.moUSD)));
   if(p.con_iva){L.push('Subtotal: '+(k.dol?ars(k.subARS):usd(k.subUSD)));L.push('IVA '+fmt.format(+p.iva).replace(/,00$/,'')+'%: '+(k.dol?ars(k.ivaARS):usd(k.ivaUSD)))}
-  L.push((p.con_iva?'TOTAL CON IVA: ':'TOTAL + IVA: ')+(k.dol?ars(k.totARS)+' (≈ '+usd(k.totUSD)+')':usd(k.totUSD)));
+  L.push((p.con_iva?'TOTAL CON IVA INCLUIDO: ':'TOTAL: ')+(k.dol?ars(k.totARS)+' (≈ '+usd(k.totUSD)+')':usd(k.totUSD)));
   if(k.dol)L.push('Dólar BNA venta: '+ars(k.dol));
   if(p.nota)L.push('Nota: '+p.nota);
   return L.join('\n');
@@ -762,7 +762,7 @@ function presTotals(rows){
    <div><span>Mano de obra</span><span>${both(k.moUSD,k.moARS)}</span></div>
    <div><span>Subtotal sin IVA</span><span>${both(k.subUSD,k.subARS)}</span></div>
    <div><label style="margin:0;display:flex;gap:8px;align-items:center;color:inherit;font-size:16px"><input type="checkbox" id="peIva" ${cur.con_iva?'checked':''} style="width:22px;height:22px"> Agregar IVA (${esc(fmt.format(+cur.iva||0).replace(/,00$/,''))}%)</label><span>${cur.con_iva?both(k.ivaUSD,k.ivaARS):'—'}</span></div>
-   <div class="big2"><span>Total${cur.con_iva?' con IVA':' + IVA'}</span><span>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</span></div>
+   <div class="big2"><span>${cur.con_iva?'Total con IVA incluido':'Total'}</span><span>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</span></div>
    ${k.dol?`<div class="note"><span>Equivale a ${esc(usd(k.totUSD))} · dólar BNA venta ${esc(ars(k.dol))}</span></div>`:'<div class="note">Sin cotización del dólar: total solo en USD.</div>'}`;
 }
 function presPrint(){
@@ -777,7 +777,7 @@ function presPrint(){
    ${p.items.map(i=>`<tr><td>${esc(i.d)}${i.a?`<br><i>${esc(i.a)}</i>`:''}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(m(i.precio))}</td><td align="right">${esc(m(i.precio*i.cantidad))}</td></tr>`).join('')}
    ${k.mo?`<tr><td colspan="4">Mano de obra</td><td align="right">${esc(k.dol?ars(k.moARS):usd(k.moUSD))}</td></tr>`:''}
    ${p.con_iva?`<tr><td colspan="4" align="right">Subtotal</td><td align="right">${esc(k.dol?ars(k.subARS):usd(k.subUSD))}</td></tr><tr><td colspan="4" align="right">IVA ${esc(fmt.format(+p.iva).replace(/,00$/,''))}%</td><td align="right">${esc(k.dol?ars(k.ivaARS):usd(k.ivaUSD))}</td></tr>`:''}
-   <tr><td colspan="4" align="right"><b>${p.con_iva?'TOTAL CON IVA':'TOTAL + IVA'}</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
+   <tr><td colspan="4" align="right"><b>${p.con_iva?'TOTAL CON IVA INCLUIDO':'TOTAL'}</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
    ${k.dol?`<p style="font-size:12px">Valores en pesos al dólar oficial Banco Nación venta ${esc(ars(k.dol))} (equivale a ${esc(usd(k.totUSD))}).</p>`:''}${p.nota?`<p>${esc(p.nota)}</p>`:''}`;
   const t=document.title;document.title='Presupuesto'+(p.cliente?' '+p.cliente:'')+(PREF.empresa?' - '+PREF.empresa:'');
   const back=()=>{document.title=t;window.removeEventListener('afterprint',back)};window.addEventListener('afterprint',back);
