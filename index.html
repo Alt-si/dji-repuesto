@@ -57,6 +57,7 @@ tr:hover td{background:var(--soft)}
 .tag.e{background:var(--acc);color:#fff}
 .code{font:500 14px 'Archivo Narrow',sans-serif;white-space:nowrap;letter-spacing:.01em}
 .gl{font-size:13px;color:var(--acc);font-weight:600;text-decoration:none;display:inline-block;padding:4px 0}.gl:hover{text-decoration:underline}
+.alias{font-size:14px;color:var(--field);font-weight:600;margin-top:2px;line-height:1.3}.alias::before{content:"↳ "}
 .iv{display:block;font-size:12px;color:var(--mut)}
 .pr{white-space:nowrap;font-variant-numeric:tabular-nums}
 .fin{font-weight:800;font-size:17px;color:var(--field)}
@@ -322,9 +323,9 @@ const candCache={};
 /* ---------- datos ---------- */
 function merge(){
   const out=[];
-  BASE.forEach((b,i)=>{const e=EDITS[b.id];if(e&&e.deleted)return;out.push(Object.assign({i},b,e?{d:e.d??b.d,p:e.p??b.p,img:e.img,imgFuente:e.imgFuente,info:e.info,por:e.por,t:e.t,edited:!!(e.d!=null||e.p!=null)}:{}))});
+  BASE.forEach((b,i)=>{const e=EDITS[b.id];if(e&&e.deleted)return;out.push(Object.assign({i},b,e?{alias:(e.d&&e.d!==b.d)?e.d:null,p:e.p??b.p,img:e.img,imgFuente:e.imgFuente,info:e.info,por:e.por,t:e.t,edited:!!(e.d!=null||e.p!=null)}:{}))});
   Object.values(EDITS).filter(e=>e.added&&!e.deleted).forEach(e=>out.push({i:1e6+(e.t||0),id:e.id,c:e.c,d:e.d||'',p:e.p||0,img:e.img,info:e.info,added:true}));
-  out.forEach(x=>{x.k=catOf(x.d,x.c);x.ms=modelsOf(x.d);x.s=(x.c+' '+x.d).toLowerCase()});
+  out.forEach(x=>{x.k=catOf(x.d,x.c);x.ms=modelsOf(x.d);x.s=(x.c+' '+x.d+' '+(x.alias||'')).toLowerCase()});
   items=out;
 }
 const fin=p=>Math.round(p*(1+(+CONF.pct||0)/100)*100)/100;
@@ -345,6 +346,8 @@ function models(){
   const cur=$('#model').value,keys=Object.keys(n).sort((a,b)=>(a[0]===b[0]?parseInt(a.slice(1))-parseInt(b.slice(1)):a.localeCompare(b)));
   $('#model').innerHTML='<option value="">Todos los equipos</option>'+keys.map(k=>`<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)} (${n[k]})</option>`).join('');
 }
+const aliasHtml=x=>x.alias?`<div class="alias">${esc(x.alias)}</div>`:'';
+const nomTxt=x=>x.d+(x.alias?' ['+x.alias+']':'');
 const gimg=c=>'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(c);
 const thumb=x=>x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg>`;
 function render(){
@@ -360,7 +363,7 @@ function render(){
   $('#thDel').hidden=!editMode;
   $('#tb').innerHTML=rows.map(x=>{
     const cn=CAT_BY[x.k].n,tags=`<div class="meta"><span class="tag">${esc(cn)}</span>${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join('')}${x.edited||x.added?'<span class="tag e">editado</span>':''}${x.info?'<span class="tag m">con info</span>':''}</div>`;
-    const name=editMode?`<input class="ed" data-f="d" data-id="${esc(x.id)}" value="${esc(x.d)}" aria-label="Nombre">`:`<button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button>`;
+    const name=editMode?(x.added?`<input class="ed" data-f="d" data-id="${esc(x.id)}" value="${esc(x.d)}" aria-label="Nombre">`:`<div class="note" style="margin-bottom:4px">${esc(x.d)}</div><input class="ed" data-f="d" data-id="${esc(x.id)}" value="${esc(x.alias||'')}" placeholder="Nuestro nombre (opcional)" aria-label="Nuestro nombre">`):`<button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button>${aliasHtml(x)}`;
     const price=editMode?`<input class="ed p" data-f="p" data-id="${esc(x.id)}" value="${fmt.format(x.p)}" inputmode="decimal" aria-label="Precio">`:`<span class="pr">${money(x.p)}</span>`;
     return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${canFav?`<button class="star${FAVS[x.id]?' on':''}" data-fav="${esc(x.id)}" aria-pressed="${!!FAVS[x.id]}" aria-label="${FAVS[x.id]?'Quitar de':'Agregar a'} favoritos" title="Favorito">${FAVS[x.id]?'★':'☆'}</button>`:''}${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td>${editMode?`<td class="n p">${price}</td>`:''}<td class="n f"><span class="pr fin">${money(fin(x.p))}</span><small class="iv">+ IVA</small></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
   $('#empty').hidden=view.length>0;
@@ -396,7 +399,7 @@ function drawPane(){
   const g=gimg(x.c);
   $('#pane').innerHTML=`<button class="x" id="pClose" aria-label="Cerrar">×</button>
   <span class="tag">${esc(CAT_BY[x.k].n)}</span> ${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join(' ')}
-  <h2 id="dName">${esc(x.d)}</h2>${cur?`<button class="btn pri" id="pPres" style="margin:6px 6px 6px 0">+ Agregar al presupuesto${cur.cliente?' de '+esc(cur.cliente):''}</button>`:''}${canFav?`<button class="btn" id="pFav" style="margin:6px 0">${FAVS[x.id]?'★ En favoritos · quitar':'☆ Agregar a favoritos'}</button>`:''}<div class="code">${esc(x.c)}</div>
+  <h2 id="dName">${esc(x.d)}</h2>${x.alias?`<div class="alias" style="font-size:17px">${esc(x.alias)}</div>`:''}${cur?`<button class="btn pri" id="pPres" style="margin:6px 6px 6px 0">+ Agregar al presupuesto${cur.cliente?' de '+esc(cur.cliente):''}</button>`:''}${canFav?`<button class="btn" id="pFav" style="margin:6px 0">${FAVS[x.id]?'★ En favoritos · quitar':'☆ Agregar a favoritos'}</button>`:''}<div class="code">${esc(x.c)}</div>
   <div class="big" id="drop">${x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
   ${x.imgFuente?`<p class="note">Foto tomada de <a href="${esc(/^https:\/\//.test(x.imgFuente)?x.imgFuente:'#')}" target="_blank" rel="noopener">${esc((x.imgFuente.match(/^https:\/\/([^/]+)/)||[])[1]||'la tienda')}</a></p>`:''}
   <h3 style="margin:16px 0 6px">Fotos encontradas por código</h3>
@@ -416,11 +419,11 @@ function drawPane(){
   <div class="acts">${sample?'<button class="btn pri" id="pAi">Explicar con IA</button>':''}<button class="btn" id="pEditInfo">Editar información</button></div>
   <div id="pInfoEd" hidden><label for="pInfo">Información / explicación</label><textarea class="fi" id="pInfo"></textarea><div class="acts"><button class="btn pri" id="pSaveInfo">Guardar información</button><button class="btn" id="pCancelInfo">Cancelar</button></div></div>
   <h3 style="margin:24px 0 0">Editar datos</h3>
-  <label for="pD">Nombre</label><input class="fi" id="pD" value="${esc(x.d)}">
+  ${x.added?`<label for="pD">Nombre</label><input class="fi" id="pD" value="${esc(x.d)}">`:`<label for="pD">Nuestro nombre (se muestra debajo del nombre original)</label><input class="fi" id="pD" value="${esc(x.alias||'')}" placeholder="Opcional">`}
   ${x.added?`<label for="pC">Código</label><input class="fi" id="pC" value="${esc(x.c)}">`:''}
   <label for="pP">Precio (USD)</label><input class="fi" id="pP" value="${fmt.format(x.p)}" inputmode="decimal">
-  <div class="acts"><button class="btn pri" id="pSave">Guardar cambios</button>${x.edited?'<button class="btn" id="pRestore">Volver al precio y nombre originales</button>':''}<button class="btn" id="pDel">Eliminar</button></div>
-  ${x.edited&&!x.added?`<p class="note">Original: ${esc(BASE[x.i].d)} · ${usd(BASE[x.i].p)}</p>`:''}`;
+  <div class="acts"><button class="btn pri" id="pSave">Guardar cambios</button>${x.edited?'<button class="btn" id="pRestore">Quitar nuestro nombre y volver al precio original</button>':''}<button class="btn" id="pDel">Eliminar</button></div>
+  ${x.edited&&!x.added&&x.p!==BASE[x.i].p?`<p class="note">Precio de lista original: ${usd(BASE[x.i].p)}</p>`:''}`;
   $('#pTxt').textContent=x.info||autoInfo(x);
   loadCands(x);
   if(!x.info)$('#pTxt').insertAdjacentHTML('beforeend','<div class="note" style="margin-top:8px">Texto general del rubro. Usá “Explicar con IA” o editalo para dejar una explicación propia.</div>');
@@ -462,7 +465,7 @@ async function explain(){
   if(aiCtl)aiCtl.abort();aiCtl=new AbortController();
   const prompt=`Sos un técnico especialista en drones agrícolas DJI Agras (T10, T16, T20, T25, T30, T40, T50, T70, T100), sus radiocontroles, baterías y generadores inverter DJI (D6000i, D8000iE, D12000i, D14000iE).
 Explicá en español rioplatense, claro y práctico, el siguiente repuesto para un vendedor o un cliente que lo busca en la lista de precios.
-Repuesto: "${x.d}"
+Repuesto: "${x.d}"${x.alias?` (en el negocio lo llamamos: "${x.alias}")`:''}
 Código: ${x.c}
 Rubro estimado: ${CAT_BY[x.k].n}
 Formato (texto plano, sin markdown, sin asteriscos), máximo 150 palabras:
@@ -502,8 +505,8 @@ $('#presView').addEventListener('click',e=>{
   else if(t.id==='peBack'){presSave(true);cur=null;renderPres()}
   else if(t.id==='peCopy'){navigator.clipboard.writeText(presText(cur)).then(()=>toast('Presupuesto copiado. Pegalo en WhatsApp o en un mail.'),()=>toast('No se pudo copiar.'))}
   else if(t.id==='pePrint')presPrint();
-  else if(t.id==='peFavs'){favRows().forEach(({f,x})=>{const it=cur.items.find(i=>i.id===x.id);if(!it)cur.items.push({id:x.id,c:x.c,d:x.d,cantidad:f.cantidad,precio:r2(fin(x.p))})});presSave();renderPres();toast('Favoritos agregados.')}
-  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d}});cur.dolar=TC()||cur.dolar;cur.iva=+CONF.iva||0;presSave();renderPres();toast('Precios y dólar actualizados.')}
+  else if(t.id==='peFavs'){favRows().forEach(({f,x})=>{const it=cur.items.find(i=>i.id===x.id);if(!it)cur.items.push({id:x.id,c:x.c,d:x.d,a:x.alias||null,cantidad:f.cantidad,precio:r2(fin(x.p))})});presSave();renderPres();toast('Favoritos agregados.')}
+  else if(t.id==='peAct'){cur.items.forEach(i=>{const x=items.find(y=>y.id===i.id);if(x){i.precio=r2(fin(x.p));i.d=x.d;i.a=x.alias||null}});cur.dolar=TC()||cur.dolar;cur.iva=+CONF.iva||0;presSave();renderPres();toast('Precios y dólar actualizados.')}
   else if(t.dataset.ri!=null){cur.items.splice(+t.dataset.ri,1);presSave();presTotals(true)}
   else if(t.id==='peDel'){if(!t.dataset.sure){t.dataset.sure='1';t.textContent='¿Seguro? Tocá de nuevo para eliminar';return}
     sb.from('presupuestos').delete().eq('id',cur.id).then(({error})=>{if(error){toast('No se pudo eliminar.');return}PRES=PRES.filter(p=>p.id!==cur.id);cur=null;renderPres();toast('Presupuesto eliminado.')})}
@@ -519,7 +522,7 @@ $('#presView').addEventListener('input',e=>{
   else if(t.id==='peBuscar'){const w=t.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(!w.length){$('#peSug').hidden=true;return}
     const r=items.filter(x=>w.every(q=>x.s.includes(q))).slice(0,8);
-    $('#peSug').hidden=false;$('#peSug').innerHTML=r.length?r.map(x=>`<button data-add="${esc(x.id)}"><span>${esc(x.d)}</span><span class="code">${esc(x.c)}</span><b class="pr">${esc(money(fin(x.p)))}</b></button>`).join(''):'<p class="note" style="padding:10px">Sin resultados.</p>'}
+    $('#peSug').hidden=false;$('#peSug').innerHTML=r.length?r.map(x=>`<button data-add="${esc(x.id)}"><span>${esc(x.d)}${x.alias?`<br><small class="alias">${esc(x.alias)}</small>`:''}</span><span class="code">${esc(x.c)}</span><b class="pr">${esc(money(fin(x.p)))}</b></button>`).join(''):'<p class="note" style="padding:10px">Sin resultados.</p>'}
 });
 $('#presView').addEventListener('change',e=>{if(!cur)return;const t=e.target;
   if(t.id==='peIva'){cur.con_iva=t.checked;presTotals(false);presSave();return}
@@ -534,7 +537,7 @@ $('#favList').addEventListener('change',e=>{const c=e.target.closest('[data-cant
   const n=e.target.closest('[data-nota]');if(n)updFav(n.dataset.nota,{nota:n.value.trim()||null})});
 $('#favList').addEventListener('input',e=>{const c=e.target.closest('[data-cant]');if(c&&+c.value>=1){FAVS[c.dataset.cant].cantidad=Math.round(+c.value);renderFavSum()}});
 $('#favCopy').addEventListener('click',async()=>{const rs=favRows();if(!rs.length)return;
-  const lines=rs.map(({f,x})=>`${f.cantidad} x ${x.d} (${x.c}) - ${money(fin(x.p))} c/u = ${money(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
+  const lines=rs.map(({f,x})=>`${f.cantidad} x ${nomTxt(x)} (${x.c}) - ${money(fin(x.p))} c/u = ${money(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
   const tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0);
   try{await navigator.clipboard.writeText('Repuestos seleccionados\n'+lines.join('\n')+'\nTotal: '+money(tot)+' + IVA');toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
 $('#editBtn').addEventListener('click',()=>{editMode=!editMode;$('#editBtn').classList.toggle('on',editMode);$('#editBtn').setAttribute('aria-pressed',editMode);$('#editBtn').textContent=editMode?'Terminar edición':'Modo edición';render()});
@@ -545,13 +548,13 @@ $('#tb').addEventListener('click',e=>{
 });
 $('#tb').addEventListener('change',e=>{
   const i=e.target.closest('.ed');if(!i)return;const id=i.dataset.id,x=items.find(y=>y.id===id);if(!x)return;
-  if(i.dataset.f==='d'){const v=i.value.trim();if(v&&v!==x.d)save(id,{d:v})}
+  if(i.dataset.f==='d'){const v=i.value.trim();if(x.added){if(v&&v!==x.d)save(id,{d:v})}else if(v!==(x.alias||''))save(id,{d:v||null})}
   else{const v=parseNum(i.value);if(v==null||v<0){toast('Precio no válido.');i.value=fmt.format(x.p);return}if(v!==x.p)save(id,{p:v})}
 });
 function del(id){
   const x=items.find(y=>y.id===id);if(!x)return;
   save(id,{deleted:true});
-  toast(`Eliminado: ${x.d}`,'Deshacer',()=>save(id,{deleted:false}));
+  toast(`Eliminado: ${nomTxt(x)}`,'Deshacer',()=>save(id,{deleted:false}));
   if(openId===id)closePane();
 }
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov')closePane()});
@@ -572,8 +575,8 @@ $('#pane').addEventListener('click',e=>{
   else if(t.id==='pRestore')save(x.id,{d:null,p:null});
   else if(t.id==='pSave'){
     const d=$('#pD').value.trim(),p=parseNum($('#pP').value),patch={};
-    if(!d||p==null||p<0){toast('Revisá el nombre y el precio.');return}
-    if(d!==x.d)patch.d=d;if(p!==x.p)patch.p=p;
+    if((x.added&&!d)||p==null||p<0){toast('Revisá el nombre y el precio.');return}
+    if(x.added){if(d!==x.d)patch.d=d}else if(d!==(x.alias||''))patch.d=d||null;if(p!==x.p)patch.p=p;
     if(x.added&&$('#pC')){const c=$('#pC').value.trim();if(c&&c!==x.c)patch.c=c}
     if(Object.keys(patch).length){save(x.id,patch);toast('Cambios guardados.')}
   }
@@ -591,7 +594,7 @@ function cfgEj(){const v=parseFloat($('#pct').value)||0,iv=parseFloat($('#ivaIn'
 $('#pct').addEventListener('input',cfgEj);$('#ivaIn').addEventListener('input',cfgEj);
 $('#csvBtn').addEventListener('click',async()=>{
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"',pc=+CONF.pct||0;
-  const tc=TC();const lines=[['Descripción','Código','Precio final USD + IVA'].concat(tc?['Precio final $ + IVA (dólar venta '+fmt.format(tc)+')']:[]).concat(['Rubro','Información']).map(q).join(';')].concat(view.map(x=>[x.d,x.c,fmt.format(fin(x.p))].concat(tc?[fmt.format(fin(x.p)*tc)]:[]).concat([CAT_BY[x.k].n,x.info||'']).map(q).join(';')));
+  const tc=TC();const lines=[['Descripción','Nuestro nombre','Código','Precio final USD + IVA'].concat(tc?['Precio final $ + IVA (dólar venta '+fmt.format(tc)+')']:[]).concat(['Rubro','Información']).map(q).join(';')].concat(view.map(x=>[x.d,x.alias||'',x.c,fmt.format(fin(x.p))].concat(tc?[fmt.format(fin(x.p)*tc)]:[]).concat([CAT_BY[x.k].n,x.info||'']).map(q).join(';')));
   const csv='﻿'+lines.join('\r\n'),name='lista_precios_repuestos.csv';
   try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}catch(e){}
   try{await navigator.clipboard.writeText(csv);toast('CSV copiado al portapapeles ('+view.length+' filas).')}catch(e){toast('No se pudo exportar.')}
@@ -639,7 +642,7 @@ function renderFavs(){
   const rs=favRows();
   $('#favList').innerHTML=rs.length?rs.map(({f,x})=>`<div class="fav">
    <button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button>
-   <div><button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button><div class="code">${esc(x.c)} · ${money(fin(x.p))} c/u</div></div>
+   <div><button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button>${aliasHtml(x)}<div class="code">${esc(x.c)} · ${money(fin(x.p))} c/u</div></div>
    <div class="sub"><strong data-sub="${esc(x.id)}"></strong><br><button class="star on" data-fav="${esc(x.id)}" aria-label="Quitar de favoritos" title="Quitar">★</button></div>
    <div class="q"><label class="note" style="margin:0">Cant.</label><input class="cant" type="number" min="1" step="1" inputmode="numeric" value="${esc(f.cantidad)}" data-cant="${esc(x.id)}" aria-label="Cantidad">
     <input class="nota" maxlength="500" placeholder="Nota (cliente, máquina, pedido…)" value="${esc(f.nota)}" data-nota="${esc(x.id)}" aria-label="Nota"></div>
@@ -674,7 +677,7 @@ function presCalc(p){
 function presAdd(x,cant){
   if(!cur)return;
   const it=cur.items.find(i=>i.id===x.id);
-  if(it)it.cantidad+=cant;else cur.items.push({id:x.id,c:x.c,d:x.d,cantidad:cant,precio:r2(fin(x.p))});
+  if(it)it.cantidad+=cant;else cur.items.push({id:x.id,c:x.c,d:x.d,a:x.alias||null,cantidad:cant,precio:r2(fin(x.p))});
   presSave();if(presMode)renderPres();
 }
 let psT=null,psBusy=Promise.resolve();
@@ -695,7 +698,7 @@ async function presNew(){
 function presText(p){
   const k=presCalc(p),L=[];
   L.push('PRESUPUESTO'+(p.cliente?' - '+p.cliente:''));L.push('Fecha: '+new Date(p.actualizado||Date.now()).toLocaleDateString('es-AR'));
-  (p.items||[]).forEach(i=>L.push(`${i.cantidad} x ${i.d} (${i.c}) - ${usd(i.precio)} c/u = ${usd(i.precio*i.cantidad)}${k.dol?' / '+ars(i.precio*i.cantidad*k.dol):''}`));
+  (p.items||[]).forEach(i=>L.push(`${i.cantidad} x ${i.d}${i.a?' ['+i.a+']':''} (${i.c}) - ${usd(i.precio)} c/u = ${usd(i.precio*i.cantidad)}${k.dol?' / '+ars(i.precio*i.cantidad*k.dol):''}`));
   L.push('Repuestos: '+usd(k.rep)+(k.dol?' / '+ars(k.repARS):''));
   if(k.mo)L.push(`Mano de obra: ${fmt.format(+p.horas).replace(/,00$/,'')} h x ${p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora)} = ${p.moneda_hora==='USD'?usd(k.mo):ars(k.mo)}`);
   if(p.con_iva){L.push('Subtotal: '+(k.dol?ars(k.subARS):usd(k.subUSD)));L.push('IVA '+fmt.format(+p.iva).replace(/,00$/,'')+'%: '+(k.dol?ars(k.ivaARS):usd(k.ivaUSD)))}
@@ -722,7 +725,7 @@ function renderPres(){
 }
 function presTotals(rows){
   const k=presCalc(cur);
-  if(rows)$('#peItems').innerHTML=cur.items.length?cur.items.map((i,n)=>`<tr><td><button class="nm" data-open="${esc(i.id)}">${esc(i.d)}</button><small>${esc(i.c)}</small></td>
+  if(rows)$('#peItems').innerHTML=cur.items.length?cur.items.map((i,n)=>`<tr><td><button class="nm" data-open="${esc(i.id)}">${esc(i.d)}</button>${i.a?`<div class="alias">${esc(i.a)}</div>`:''}<small>${esc(i.c)}</small></td>
     <td class="n"><input type="number" min="1" step="1" inputmode="numeric" value="${esc(i.cantidad)}" data-qi="${n}" aria-label="Cantidad"></td>
     <td class="n pr">${esc(usd(i.precio))}${k.dol?`<small>${esc(ars(i.precio*k.dol))}</small>`:''}</td>
     <td class="n pr" data-st="${n}"></td><td><button class="del" data-ri="${n}" aria-label="Quitar">×</button></td></tr>`).join(''):'<tr><td colspan="5" class="note">Agregá repuestos con el buscador de arriba o desde la ficha de cada repuesto.</td></tr>';
@@ -741,7 +744,7 @@ function presPrint(){
   pp.style.cssText='display:none;font:14px/1.45 Archivo,Arial,sans-serif;color:#000;padding:24px';
   pp.innerHTML=`<h1 style="font-size:24px;margin:0">Presupuesto</h1><p>${esc(p.cliente?'Cliente: '+p.cliente+' · ':'')}Fecha: ${esc(new Date().toLocaleDateString('es-AR'))}</p>
    <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><thead><tr><th align="left">Repuesto</th><th>Código</th><th align="right">Cant.</th><th align="right">Unitario</th><th align="right">Subtotal</th></tr></thead><tbody>
-   ${p.items.map(i=>`<tr><td>${esc(i.d)}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(k.dol?ars(i.precio*k.dol):usd(i.precio))}</td><td align="right">${esc(k.dol?ars(i.precio*i.cantidad*k.dol):usd(i.precio*i.cantidad))}</td></tr>`).join('')}
+   ${p.items.map(i=>`<tr><td>${esc(i.d)}${i.a?`<br><i>${esc(i.a)}</i>`:''}</td><td>${esc(i.c)}</td><td align="right">${esc(i.cantidad)}</td><td align="right">${esc(k.dol?ars(i.precio*k.dol):usd(i.precio))}</td><td align="right">${esc(k.dol?ars(i.precio*i.cantidad*k.dol):usd(i.precio*i.cantidad))}</td></tr>`).join('')}
    ${k.mo?`<tr><td colspan="2">Mano de obra</td><td align="right">${esc(fmt.format(+p.horas).replace(/,00$/,''))} h</td><td align="right">${esc(p.moneda_hora==='USD'?usd(+p.valor_hora):ars(+p.valor_hora))}</td><td align="right">${esc(k.dol?ars(k.moARS):usd(k.moUSD))}</td></tr>`:''}
    ${p.con_iva?`<tr><td colspan="4" align="right">Subtotal</td><td align="right">${esc(k.dol?ars(k.subARS):usd(k.subUSD))}</td></tr><tr><td colspan="4" align="right">IVA ${esc(fmt.format(+p.iva).replace(/,00$/,''))}%</td><td align="right">${esc(k.dol?ars(k.ivaARS):usd(k.ivaUSD))}</td></tr>`:''}
    <tr><td colspan="4" align="right"><b>${p.con_iva?'TOTAL CON IVA':'TOTAL + IVA'}</b></td><td align="right"><b>${esc(k.dol?ars(k.totARS):usd(k.totUSD))}</b></td></tr></tbody></table>
