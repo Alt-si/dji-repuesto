@@ -526,6 +526,7 @@ $('#presView').addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
   if(t.id==='pNew')presNew();
   else if(t.id==='pExit')$('#presBtn').click();
+  else if(t.id==='pVer'){presVer=!presVer;renderPres();if(presVer)setTimeout(()=>$('#pBusca').focus(),30)}
   else if(t.dataset.pres){cur=PRES.find(p=>p.id===t.dataset.pres)||null;cur&&(cur.items=cur.items||[]);renderPres();window.scrollTo({top:0})}
   else if(t.id==='peBack'){presSave(true);cur=null;renderPres()}
   else if(t.id==='peCopy'){navigator.clipboard.writeText(presText(cur)).then(()=>toast('Presupuesto copiado. Pegalo en WhatsApp o en un mail.'),()=>toast('No se pudo copiar.'))}
@@ -539,11 +540,13 @@ $('#presView').addEventListener('click',e=>{
   else if(t.dataset.add){const x=items.find(y=>y.id===t.dataset.add);if(x){presAdd(x,1);$('#peBuscar').value='';$('#peSug').hidden=true;$('#peBuscar').focus()}}
 });
 $('#presView').addEventListener('input',e=>{
-  if(!cur)return;const t=e.target;
+  const t=e.target;if(t.id==='pBusca'){presQ=t.value;drawPresList();return}
+  if(!cur)return;
   if(t.id==='peCliente'){cur.cliente=t.value;$('#peTitle').textContent='Presupuesto'+(t.value?' · '+t.value:'');presSave()}
   else if(t.id==='peNota'){cur.nota=t.value;presSave()}
   else if(t.id==='peHoras'){cur.horas=Math.max(0,+t.value||0);cur.valor_hora=PREF.valor_hora;cur.moneda_hora=PREF.moneda_hora;presTotals(false);presSave()}
   else if(t.dataset.qi!=null){const v=Math.round(+t.value);if(v>=1){cur.items[+t.dataset.qi].cantidad=v;presTotals(false);presSave()}}
+  else if(t.id==='pBusca'){presQ=t.value;drawPresList()}
   else if(t.id==='peBuscar'){const w=t.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(!w.length){$('#peSug').hidden=true;return}
     const r=items.filter(x=>w.every(q=>x.s.includes(q))).slice(0,8);
@@ -679,7 +682,7 @@ function renderFavs(){
 function showDolar(){
   if(!TC())return;
   $('#dol').hidden=false;$('#dCompra').textContent=DOLAR.compra?ars(DOLAR.compra):'—';$('#dVenta').textContent=ars(DOLAR.venta);
-  $('#dFecha').textContent=(DOLAR.fecha_banco?'Cotización del '+DOLAR.fecha_banco:'')+(DOLAR.desactualizado?' · puede estar desactualizada':'')+' · los pesos se calculan con el valor venta';
+  $('#dFecha').textContent=[DOLAR.fecha_banco?'Cotización del '+DOLAR.fecha_banco:'',DOLAR.desactualizado?'puede estar desactualizada':'','los pesos se calculan con el valor venta'].filter(Boolean).join(' · ');
 }
 async function loadDolar(){
   if(!CFG.url)return;
@@ -733,11 +736,19 @@ function presText(p){
   if(p.nota)L.push('Nota: '+p.nota);
   return L.join('\n');
 }
+let presVer=false,presQ='';
+const sinAc=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+function drawPresList(){
+  const w=sinAc(presQ).split(/\s+/).filter(Boolean);
+  const rs=PRES.filter(p=>{const t=sinAc((p.cliente||'')+' '+(p.nota||''));return w.every(q=>t.includes(q))});
+  $('#pResult').innerHTML=rs.length?'<div class="plist">'+rs.map(p=>{const k=presCalc(p);return `<button class="pcard" data-pres="${esc(p.id)}"><span><b>${esc(p.cliente||'Sin cliente')}</b><br><span class="note">${esc(new Date(p.actualizado).toLocaleDateString('es-AR'))} · ${(p.items||[]).length} repuestos${+p.horas?' · con mano de obra':''}${p.con_iva?' · con IVA':''}</span></span><b>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</b></button>`}).join('')+'</div>':`<p class="empty">${PRES.length?'No hay presupuestos con ese nombre.':'Todavía no hay presupuestos.'}</p>`;
+}
 function renderPres(){
   if(!cur){
     $('#presEd').hidden=true;$('#presList').hidden=false;
-    $('#presList').innerHTML=`<div class="favhead"><div><h2 style="margin:0">Mis presupuestos</h2><p class="note">Elegí repuestos, cantidades y horas de mano de obra. Quedan guardados.</p></div><div class="acts" style="margin:0"><button class="btn pri" id="pNew">+ Nuevo presupuesto</button><button class="btn" id="pExit">Volver a la lista</button></div></div>`+
-     (PRES.length?'<div class="plist">'+PRES.map(p=>{const k=presCalc(p);return `<button class="pcard" data-pres="${esc(p.id)}"><span><b>${esc(p.cliente||'Sin cliente')}</b><br><span class="note">${esc(new Date(p.actualizado).toLocaleDateString('es-AR'))} · ${(p.items||[]).length} repuestos${+p.horas?' · con mano de obra':''}</span></span><b>${k.dol?esc(ars(k.totARS)):esc(usd(k.totUSD))}</b></button>`}).join('')+'</div>':'<p class="empty">Todavía no hay presupuestos.</p>');
+    $('#presList').innerHTML=`<div class="favhead"><div><h2 style="margin:0">Mis presupuestos</h2><p class="note">Elegí repuestos, cantidades y horas de mano de obra. Quedan guardados.</p></div><div class="acts" style="margin:0"><button class="btn pri" id="pNew">+ Nuevo presupuesto</button><button class="btn${presVer?' on':''}" id="pVer" aria-pressed="${presVer}">Ver presupuestos (${PRES.length})</button><button class="btn" id="pExit">Volver a la lista</button></div></div>
+     <div id="pVerBox" ${presVer?'':'hidden'}><input class="fi" id="pBusca" type="search" placeholder="Buscar por nombre o apellido del cliente" autocomplete="off" style="margin-top:12px"><div id="pResult"></div></div>`;
+    if(presVer){$('#pBusca').value=presQ;drawPresList()}
     return;
   }
   $('#presList').hidden=true;$('#presEd').hidden=false;
