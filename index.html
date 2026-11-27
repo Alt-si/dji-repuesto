@@ -102,6 +102,8 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 }
 @media(prefers-reduced-motion:no-preference){.pane{animation:sl .22s ease-out}@keyframes sl{from{transform:translateX(30px);opacity:.4}}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <script src="cat.js"></script>
 </head>
 <body>
@@ -143,6 +145,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
   <button class="btn" id="editBtn" aria-pressed="false">Modo edición</button>
   <button class="btn pri" id="addBtn">+ Agregar</button>
   <button class="btn" id="csvBtn">Exportar CSV</button>
+  <button class="btn" id="loginBtn" hidden>Ingresar para editar</button>
  </div>
 </div></div>
 
@@ -157,6 +160,15 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 </main>
 
 <div class="ov" id="ov"><div class="pane" role="dialog" aria-modal="true" aria-labelledby="dName" id="pane"></div></div>
+<div class="ov" id="lov"><form class="pane" id="lform" style="height:auto;bottom:auto;top:10vh;right:50%;transform:translateX(50%);width:min(420px,94%);border-radius:16px" aria-labelledby="lt">
+ <button type="button" class="x" id="lClose" aria-label="Cerrar">×</button>
+ <h2 id="lt">Ingresar para editar</h2>
+ <p class="note">Solo las personas con usuario pueden cambiar precios y subir fotos. Todos los demás ven la lista.</p>
+ <label for="lMail">Email</label><input class="fi" id="lMail" type="email" autocomplete="username" required>
+ <label for="lPass">Contraseña</label><input class="fi" id="lPass" type="password" autocomplete="current-password" required>
+ <p class="note" id="lErr" style="color:var(--acc)"></p>
+ <div class="acts"><button class="btn pri" type="submit">Ingresar</button></div>
+</form></div>
 <div class="toast" id="toast"><span id="tMsg"></span><button id="tBtn" hidden></button></div>
 
 <script>
@@ -169,7 +181,10 @@ const idOf=c=>String(c).trim().replace(/[^A-Za-z0-9_.~:@+-]/g,'_').replace(/^\.{
 const parseNum=s=>{s=String(s).trim().replace(/usd/i,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?Math.round(n*100)/100:null};
 const PER=60;
 let BASE=[],EDITS={},CONF={pct:10},items=[],view=[],page=0,cat='',editMode=false,openId=null;
-let db=null,assets=null,sample=null,dl=null,canWrite=true;
+let sb=null,assets=null,sample=null,logged=false;
+const CFG=window.REPUESTOS_CONFIG||{};
+const BUCKET='fotos';
+const imgUrl=p=>p?(sb?sb.storage.from(BUCKET).getPublicUrl(p).data.publicUrl:''):'';
 
 /* ---------- datos ---------- */
 function merge(){
@@ -198,7 +213,7 @@ function models(){
   $('#model').innerHTML='<option value="">Todos los equipos</option>'+keys.map(k=>`<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)} (${n[k]})</option>`).join('');
 }
 const gimg=c=>'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(c);
-const thumb=x=>x.img?`<img src="/_blob/${esc(x.img)}" alt="" loading="lazy">`:`<svg><use href="#i-${x.k}"/></svg>`;
+const thumb=x=>x.img&&sb?`<img src="${esc(imgUrl(x.img))}" alt="" loading="lazy">`:`<svg><use href="#i-${x.k}"/></svg>`;
 function render(){
   filter();
   const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;
@@ -221,15 +236,15 @@ const queues={};
 function save(id,patch){
   const cur=Object.assign({},EDITS[id]||{id},patch,{t:Date.now()});
   EDITS[id]=cur;full();
-  if(!db){localSave();return Promise.resolve()}
+  if(!sb){localSave();return Promise.resolve()}
+  if(!logged){toast('Ingresá con tu usuario para guardar cambios.');return Promise.resolve()}
   const body=JSON.parse(JSON.stringify(cur));
-  queues[id]=(queues[id]||Promise.resolve()).then(()=>db.doc('items/'+id).set(body)).catch(e=>{
-    if(e&&e.code==='invalid_argument'){canWrite=false;toast('No tenés permiso para editar esta lista.')}else if(e&&e.code==='quota_exceeded')toast('La base está llena: '+(e.message||''));else toast('No se pudo guardar. Probá de nuevo.')});
+  queues[id]=(queues[id]||Promise.resolve()).then(async()=>{const {error}=await sb.from('edits').upsert({id,data:body,updated_at:new Date().toISOString()});if(error)throw error;$('#sync').textContent='Cambios guardados y compartidos'}).catch(e=>{toast('No se pudo guardar: '+((e&&e.message)||'error de conexión'))});
   return queues[id];
 }
 function localSave(){try{localStorage.setItem('rep_edits',JSON.stringify(EDITS));localStorage.setItem('rep_conf',JSON.stringify(CONF))}catch(e){}}
 function localLoad(){try{EDITS=JSON.parse(localStorage.getItem('rep_edits')||'{}')||{};const c=JSON.parse(localStorage.getItem('rep_conf')||'null');if(c&&isFinite(c.pct)){CONF.pct=c.pct;$('#pct').value=c.pct}}catch(e){}}
-function saveConf(){if(!db)localSave();if(db)db.doc('config/main').set({pct:+CONF.pct||0}).catch(()=>toast('No se pudo guardar el porcentaje.'))}
+function saveConf(){if(!sb){localSave();return}if(!logged)return;sb.from('config').upsert({id:'main',pct:+CONF.pct||0}).then(({error})=>{if(error)toast('No se pudo guardar el porcentaje.')})}
 
 /* ---------- ficha ---------- */
 function autoInfo(x){
@@ -243,13 +258,13 @@ function drawPane(){
   $('#pane').innerHTML=`<button class="x" id="pClose" aria-label="Cerrar">×</button>
   <span class="tag">${esc(CAT_BY[x.k].n)}</span> ${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join(' ')}
   <h2 id="dName">${esc(x.d)}</h2><div class="code">${esc(x.c)}</div>
-  <div class="big" id="drop">${x.img?`<img src="/_blob/${esc(x.img)}" alt="${esc(x.d)}">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
+  <div class="big" id="drop">${x.img&&sb?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
   <div class="acts">
    <a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="${g}" target="_blank" rel="noopener">Buscar foto en Google (por código) ↗</a>
    ${assets?`<label class="btn" style="margin:0;display:inline-flex;align-items:center;color:inherit;font-size:16px">Subir foto<input type="file" id="pFile" accept="image/*" hidden></label>`:''}
    ${x.img&&assets?'<button class="btn" id="pNoImg">Quitar foto</button>':''}
   </div>
-  <p class="note">${assets?'Abrí “Buscar foto en Google”, hacé clic derecho sobre la imagen → <b>Copiar imagen</b>, volvé acá y pegala con Ctrl+V. Queda guardada en este producto.':'Para cargar fotos necesitás permiso de edición en esta lista.'}</p>
+  <p class="note">${assets?'Abrí “Buscar foto en Google”, hacé clic derecho sobre la imagen → <b>Copiar imagen</b>, volvé acá y pegala con Ctrl+V. Queda guardada en este producto.':(sb?'Para cargar fotos tenés que ingresar con tu usuario.':'Para cargar fotos hace falta conectar la lista a Supabase.')}</p>
   <div class="prices"><div><small>Precio de lista</small><strong>${usd(x.p)}</strong></div><div class="f"><small>Precio final (+${esc(fmt.format(+CONF.pct||0).replace(/,00$/,''))}%)</small><strong>${usd(fin(x.p))}</strong></div></div>
   <h3 style="margin:20px 0 6px">Información del repuesto</h3>
   <div class="txt" id="pTxt"></div>
@@ -266,10 +281,18 @@ function drawPane(){
 }
 function openPane(id){openId=id;drawPane();$('#ov').classList.add('open');setTimeout(()=>$('#pClose')&&$('#pClose').focus(),30)}
 function closePane(){openId=null;$('#ov').classList.remove('open')}
+function shrink(file,max,q){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error('imagen no válida')),'image/jpeg',q)};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('imagen no válida'))};im.src=u})}
 async function upload(file){
   if(!assets||!file||!/^image\//.test(file.type))return;
   const id=openId;toast('Subiendo foto…');
-  try{const a=await assets.upload(file);await save(id,{img:a.id});toast('Foto guardada.')}catch(e){toast('No se pudo subir la foto.')}
+  try{
+    const blob=await shrink(file,900,0.82),path=id+'-'+Date.now()+'.jpg';
+    const {error}=await sb.storage.from(BUCKET).upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
+    if(error)throw error;
+    const old=EDITS[id]&&EDITS[id].img;
+    await save(id,{img:path});toast('Foto guardada.');
+    if(old)sb.storage.from(BUCKET).remove([old]).catch(()=>{});
+  }catch(e){toast('No se pudo subir la foto: '+((e&&e.message)||''))}
 }
 let aiCtl=null;
 async function explain(){
@@ -355,7 +378,7 @@ $('#csvBtn').addEventListener('click',async()=>{
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"',pc=+CONF.pct||0;
   const lines=[['Descripción','Código','Precio USD',`Precio final USD (+${pc}%)`,'Rubro','Información'].map(q).join(';')].concat(view.map(x=>[x.d,x.c,fmt.format(x.p),fmt.format(fin(x.p)),CAT_BY[x.k].n,x.info||''].map(q).join(';')));
   const csv='﻿'+lines.join('\r\n'),name='lista_precios_repuestos.csv';
-  if(dl){try{await dl.save({filename:name,data:new Blob([csv],{type:'text/csv'})});return}catch(e){}}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}catch(e){}
   try{await navigator.clipboard.writeText(csv);toast('CSV copiado al portapapeles ('+view.length+' filas).')}catch(e){toast('No se pudo exportar.')}
 });
 let tt,tcb;function toast(m,btn,cb){$('#tMsg').textContent=m;const b=$('#tBtn');b.hidden=!btn;b.textContent=btn||'';tcb=cb;$('#toast').classList.add('show');clearTimeout(tt);tt=setTimeout(()=>$('#toast').classList.remove('show'),btn?6000:3200)}
@@ -368,22 +391,41 @@ fetch('data.json').then(r=>r.json()).then(rows=>{
   full();
 }).catch(()=>{$('#count').textContent='No se pudo cargar la lista.'});
 
-if(!(window.claude&&claude.use)){localLoad();$('#sync').textContent='Los cambios se guardan en este navegador.'}
-else{
-  claude.use('db').then(d=>{
-    if(!d){localLoad();if(BASE.length)full();$('#sync').textContent='Los cambios se guardan en este navegador.';return}
-    db=d;$('#sync').textContent='Conectando…';
-    const timer=setTimeout(()=>{$('#sync').textContent='No se pudo conectar todavía; los datos pueden estar desactualizados.'},10000);
-    db.collection('items').onSnapshot(s=>{
-      if(!s.metadata.fromCache){clearTimeout(timer);$('#sync').textContent='Cambios guardados y compartidos'}
-      const m={};s.docs.forEach(x=>{const v=x.data();if(v)m[x.id]=Object.assign({},v,{id:x.id})});EDITS=m;if(BASE.length)full();
-    },()=>{clearTimeout(timer);$('#sync').textContent='Se perdió la conexión con la base.'});
-    db.doc('config/main').onSnapshot(s=>{const v=s.exists&&s.data();if(v&&isFinite(v.pct)){CONF.pct=v.pct;if(document.activeElement!==$('#pct'))$('#pct').value=v.pct;render();if(openId)drawPane()}},()=>{});
-  });
-  claude.use('user').then(u=>{if(u&&u.can)Promise.resolve(u.can('data.write')).then(ok=>{if(ok===false){canWrite=false;['#editBtn','#addBtn'].forEach(s=>$(s).hidden=true);$('#pct').disabled=true}}).catch(()=>{})});
-  claude.use('assets').then(a=>{assets=a;if(openId)drawPane()});
-  claude.use('sample').then(s=>{sample=s;if(openId)drawPane()});
-  claude.use('downloads').then(d=>{dl=d});
+function setLogged(v){
+  logged=!!v;assets=logged?{}:null;
+  $('#loginBtn').hidden=false;$('#loginBtn').textContent=logged?'Salir':'Ingresar para editar';
+  ['#editBtn','#addBtn'].forEach(s=>$(s).hidden=!logged);$('#pct').disabled=!logged;
+  if(!logged&&editMode)$('#editBtn').click();
+  if(openId)drawPane();
+}
+async function loadAll(){
+  const m={};let from=0;
+  for(;;){const {data,error}=await sb.from('edits').select('id,data').range(from,from+999);if(error)throw error;data.forEach(r=>{if(r.data)m[r.id]=Object.assign({},r.data,{id:r.id})});if(data.length<1000)break;from+=1000}
+  EDITS=m;
+  const {data:c}=await sb.from('config').select('pct').eq('id','main').maybeSingle();
+  if(c&&isFinite(c.pct)){CONF.pct=+c.pct;if(document.activeElement!==$('#pct'))$('#pct').value=c.pct}
+  if(BASE.length)full();
+}
+if(CFG.url&&CFG.anonKey&&window.supabase){
+  sb=window.supabase.createClient(CFG.url,CFG.anonKey);
+  $('#sync').textContent='Conectando…';
+  loadAll().then(()=>{$('#sync').textContent='Lista compartida al día'}).catch(e=>{$('#sync').textContent='No se pudo conectar con la base: '+(e.message||'')});
+  sb.channel('cambios').on('postgres_changes',{event:'*',schema:'public',table:'edits'},p=>{
+    if(p.eventType==='DELETE'){delete EDITS[p.old.id]}else if(p.new&&p.new.data){EDITS[p.new.id]=Object.assign({},p.new.data,{id:p.new.id})}
+    if(BASE.length)full();
+  }).on('postgres_changes',{event:'*',schema:'public',table:'config'},p=>{if(p.new&&isFinite(p.new.pct)){CONF.pct=+p.new.pct;if(document.activeElement!==$('#pct'))$('#pct').value=p.new.pct;render();if(openId)drawPane()}}).subscribe();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadAll().catch(()=>{})});
+  sb.auth.getSession().then(({data})=>setLogged(data&&data.session));
+  sb.auth.onAuthStateChange((_e,s)=>setLogged(s));
+  $('#loginBtn').addEventListener('click',async()=>{if(logged){await sb.auth.signOut();toast('Sesión cerrada.');return}$('#lErr').textContent='';$('#lov').classList.add('open');setTimeout(()=>$('#lMail').focus(),30)});
+  $('#lClose').addEventListener('click',()=>$('#lov').classList.remove('open'));
+  $('#lov').addEventListener('click',e=>{if(e.target.id==='lov')$('#lov').classList.remove('open')});
+  $('#lform').addEventListener('submit',async e=>{e.preventDefault();$('#lErr').textContent='Ingresando…';
+    const {error}=await sb.auth.signInWithPassword({email:$('#lMail').value.trim(),password:$('#lPass').value});
+    if(error){$('#lErr').textContent='Email o contraseña incorrectos.';return}
+    $('#lPass').value='';$('#lov').classList.remove('open');toast('Listo, ya podés editar.')});
+}else{
+  localLoad();$('#sync').textContent='Sin base conectada: los cambios se guardan solo en este navegador.';
 }
 }
 </script>
