@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
       const nombre = String(body.nombre || "").trim().slice(0, 80) || null;
       const { error } = await sb.auth.admin.createUser({ email, password: body.password, email_confirm: true, user_metadata: { nombre } });
       if (error) return json({ error: error.message }, 400);
-      const { error: e2 } = await sb.from("editores").upsert({ email, nombre, rol: "admin", activo: true });
+      const { error: e2 } = await sb.from("editores").upsert({ email, nombre, rol: "admin", favoritos: true, activo: true });
       if (e2) return json({ error: e2.message }, 400);
       return json({ ok: true });
     }
@@ -70,7 +70,8 @@ Deno.serve(async (req: Request) => {
 
     if (accion === "crear_usuario") {
       if (!claveOk(body.password)) return json({ error: "La contraseña debe tener al menos 8 caracteres." }, 400);
-      const rol = body.rol === "admin" ? "admin" : "editor";
+      const rol = ["admin", "editor", "consulta"].includes(body.rol) ? body.rol : "editor";
+      const favoritos = body.favoritos === true || rol === "consulta";
       const nombre = String(body.nombre || "").trim().slice(0, 80) || null;
       const existente = await buscarId(email);
       if (existente) {
@@ -80,7 +81,7 @@ Deno.serve(async (req: Request) => {
         const { error } = await sb.auth.admin.createUser({ email, password: body.password, email_confirm: true, user_metadata: { nombre } });
         if (error) return json({ error: error.message }, 400);
       }
-      const { error: e2 } = await sb.from("editores").upsert({ email, nombre, rol, activo: true });
+      const { error: e2 } = await sb.from("editores").upsert({ email, nombre, rol, favoritos, activo: true });
       if (e2) return json({ error: e2.message }, 400);
       return json({ ok: true, existia: !!existente });
     }
@@ -98,6 +99,7 @@ Deno.serve(async (req: Request) => {
       if (email === yoEmail) return json({ error: "No podés eliminar tu propio usuario." }, 400);
       const { error: e1 } = await sb.from("editores").delete().eq("email", email);
       if (e1) return json({ error: e1.message }, 400);
+      await sb.from("favoritos").delete().eq("email", email);
       const id = await buscarId(email);
       if (id) {
         const { error } = await sb.auth.admin.deleteUser(id);

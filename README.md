@@ -40,13 +40,23 @@ La lista está conectada al proyecto de Supabase **dji-repuestos** (región São
 - Las fotos que sube cualquier editor quedan públicas para todos los que ven la lista.
 - En cada ficha figura quién hizo la última modificación y cuándo.
 
+### Favoritos
+
+- Cada usuario con permiso marca repuestos con la estrella ☆ (en la lista o en la ficha).
+- El botón **★ Favoritos** muestra su listado: cantidad y nota por repuesto, subtotal y total con recargo, y **Copiar listado** para pegarlo en WhatsApp o un mail. Tocando el nombre se abre la ficha.
+- El listado queda guardado en la base y es privado de cada usuario; no se borra al cerrar la página.
+- El administrador lo habilita por usuario en el panel (casilla **Favoritos**). Los administradores lo tienen siempre.
+- Permiso **Consulta**: ve la lista y usa favoritos, pero no puede cambiar precios ni fotos.
+
 ### Base de datos
 
 | Tabla / función | Para qué |
 |---|---|
 | `edits` | Un registro por producto editado o agregado (`data`: nombre, precio, foto, información, eliminado, quién y cuándo) |
 | `config` | El porcentaje de recargo (`id = 'main'`) |
-| `editores` | Usuarios con permiso: email, nombre, rol (`admin`/`editor`), activo |
+| `editores` | Usuarios: email, nombre, rol (`admin`/`editor`/`consulta`), activo, favoritos |
+| `favoritos` | Listado de cada usuario: repuesto, cantidad, nota |
+| `fotos_auto` | Resultado de la búsqueda automática de fotos por código |
 | bucket `fotos` | Fotos públicas; solo los usuarios habilitados pueden subir o borrar |
 | función `admin-usuarios` | Crea usuarios, cambia contraseñas y elimina cuentas (código en `supabase/functions/admin-usuarios`) |
 

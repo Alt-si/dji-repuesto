@@ -100,6 +100,15 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 .cand img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff}
 .cand span{font-size:12px;padding:4px 6px;line-height:1.25;color:#5b6b66;overflow-wrap:anywhere}
 .cand.ok{border-color:var(--field)}.cand.sel{outline:3px solid var(--acc)}
+.star{border:0;background:none;cursor:pointer;font-size:22px;line-height:1;width:40px;height:40px;color:var(--mut);vertical-align:middle}
+.star.on{color:#e8a01c}
+.favhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:end;padding:6px 0 12px;border-bottom:2px solid var(--ink)}
+.fav{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:6px 14px;padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+.fav .q{display:flex;gap:8px;flex-wrap:wrap;align-items:center;grid-column:2/4}
+.fav .q input{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:var(--bg);font-size:16px}
+.fav .q .cant{width:80px;text-align:right}.fav .q .nota{flex:1 1 220px}
+.fav .sub{text-align:right;white-space:nowrap}.fav .sub strong{color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
+.favtot{display:flex;justify-content:flex-end;gap:16px;padding:14px 0;font-size:18px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;z-index:40;display:none;gap:12px;align-items:center;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--acc);font-weight:700;cursor:pointer}
 .note{font-size:13px;color:var(--mut)}
@@ -156,6 +165,7 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
  </div>
  <div class="row">
   <div class="chips" id="chips" style="flex:1 1 400px"></div>
+  <button class="btn" id="favBtn" aria-pressed="false" hidden>★ Favoritos</button>
   <button class="btn" id="editBtn" aria-pressed="false">Modo edición</button>
   <button class="btn pri" id="addBtn">+ Agregar</button>
   <button class="btn" id="csvBtn">Exportar CSV</button>
@@ -165,6 +175,13 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
 
 <main>
  <div class="info"><span id="count">Cargando lista…</span><span id="sync" class="note"></span></div>
+ <section id="favView" hidden>
+  <div class="favhead">
+   <div><h2 style="margin:0">Mis favoritos</h2><p class="note" id="favSum"></p></div>
+   <div class="acts" style="margin:0"><button class="btn" id="favCopy">Copiar listado</button><button class="btn" id="favExit">Volver a la lista completa</button></div>
+  </div>
+  <div id="favList"></div>
+ </section>
  <table id="tbl">
   <thead><tr><th style="width:80px">Imagen</th><th>Repuesto</th><th>Código</th><th class="n">Precio</th><th class="n" id="thFin">Precio final (+10%)</th><th id="thDel" style="width:44px" hidden></th></tr></thead>
   <tbody id="tb"></tbody>
@@ -201,7 +218,8 @@ textarea.fi{min-height:170px;resize:vertical;line-height:1.5}
    <label for="uPass">Contraseña inicial</label>
    <div class="row"><input class="fi" id="uPass" autocomplete="off" minlength="8" required style="flex:1"><button type="button" class="btn" id="uGen">Generar</button></div>
    <label for="uRol">Permiso</label>
-   <select class="fi" id="uRol"><option value="editor">Editor: cambia precios y sube fotos</option><option value="admin">Administrador: además habilita usuarios</option></select>
+   <select class="fi" id="uRol"><option value="consulta">Consulta: ve la lista y usa favoritos</option><option value="editor" selected>Editor: cambia precios y sube fotos</option><option value="admin">Administrador: además habilita usuarios</option></select>
+   <label style="display:flex;gap:8px;align-items:center;font-size:15px;color:inherit"><input type="checkbox" id="uFav" checked style="width:20px;height:20px"> Puede usar favoritos</label>
    <p class="note" id="uMsg"></p>
    <div class="acts"><button class="btn pri" type="submit">Crear usuario</button></div>
   </form>
@@ -222,7 +240,7 @@ const idOf=c=>String(c).trim().replace(/[^A-Za-z0-9_.~:@+-]/g,'_').replace(/^\.{
 const parseNum=s=>{s=String(s).trim().replace(/usd/i,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?Math.round(n*100)/100:null};
 const PER=60;
 let BASE=[],EDITS={},CONF={pct:10},items=[],view=[],page=0,cat='',editMode=false,openId=null;
-let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true;
+let sb=null,assets=null,sample=null,logged=false,me=null,session=null,hayAdmin=true,canFav=false,favMode=false,FAVS={};
 const CFG=window.REPUESTOS_CONFIG||{};
 const BUCKET='fotos';
 const movil=matchMedia('(pointer:coarse)').matches;
@@ -259,6 +277,8 @@ function models(){
 const gimg=c=>'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(c);
 const thumb=x=>x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg>`;
 function render(){
+  $('#favView').hidden=!favMode;$('#tbl').style.display=favMode?'none':'';$('#pager').style.display=favMode?'none':'';$('#empty').hidden=true;
+  if(favMode){renderFavs();$('#count').textContent='Tus repuestos seleccionados';return}
   filter();
   const pages=Math.max(1,Math.ceil(view.length/PER));if(page>=pages)page=pages-1;
   const rows=view.slice(page*PER,page*PER+PER);
@@ -268,8 +288,9 @@ function render(){
     const cn=CAT_BY[x.k].n,tags=`<div class="meta"><span class="tag">${esc(cn)}</span>${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join('')}${x.edited||x.added?'<span class="tag e">editado</span>':''}${x.info?'<span class="tag m">con info</span>':''}</div>`;
     const name=editMode?`<input class="ed" data-f="d" data-id="${esc(x.id)}" value="${esc(x.d)}" aria-label="Nombre">`:`<button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button>`;
     const price=editMode?`<input class="ed p" data-f="p" data-id="${esc(x.id)}" value="${fmt.format(x.p)}" inputmode="decimal" aria-label="Precio">`:`<span class="pr">${usd(x.p)}</span>`;
-    return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td><td class="n p">${price}</td><td class="n f"><span class="pr fin">${usd(fin(x.p))}</span></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
+    return `<tr><td class="i"><button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button></td><td>${canFav?`<button class="star${FAVS[x.id]?' on':''}" data-fav="${esc(x.id)}" aria-pressed="${!!FAVS[x.id]}" aria-label="${FAVS[x.id]?'Quitar de':'Agregar a'} favoritos" title="Favorito">${FAVS[x.id]?'★':'☆'}</button>`:''}${name}${tags}</td><td class="c"><span class="code">${esc(x.c)}</span><br><a class="gl" href="${gimg(x.c)}" target="_blank" rel="noopener" data-open="${esc(x.id)}">${x.img?'Cambiar foto':'Ver foto real'} ↗</a></td><td class="n p">${price}</td><td class="n f"><span class="pr fin">${usd(fin(x.p))}</span></td>${editMode?`<td><button class="del" data-del="${esc(x.id)}" aria-label="Eliminar" title="Eliminar">×</button></td>`:''}</tr>`}).join('');
   $('#empty').hidden=view.length>0;
+  $('#favBtn').textContent='★ Favoritos ('+Object.keys(FAVS).length+')';
   $('#count').textContent=`${view.length.toLocaleString('es-AR')} de ${items.length.toLocaleString('es-AR')} repuestos`;
   $('#pager').innerHTML=pages>1?`<button class="btn" data-pg="${page-1}" ${page?'':'disabled'}>‹ Anterior</button><span>Página ${page+1} de ${pages}</span><button class="btn" data-pg="${page+1}" ${page<pages-1?'':'disabled'}>Siguiente ›</button>`:'';
 }
@@ -301,7 +322,7 @@ function drawPane(){
   const g=gimg(x.c);
   $('#pane').innerHTML=`<button class="x" id="pClose" aria-label="Cerrar">×</button>
   <span class="tag">${esc(CAT_BY[x.k].n)}</span> ${x.ms.map(m=>`<span class="tag m">${esc(m)}</span>`).join(' ')}
-  <h2 id="dName">${esc(x.d)}</h2><div class="code">${esc(x.c)}</div>
+  <h2 id="dName">${esc(x.d)}</h2>${canFav?`<button class="btn" id="pFav" style="margin:6px 0">${FAVS[x.id]?'★ En favoritos · quitar':'☆ Agregar a favoritos'}</button>`:''}<div class="code">${esc(x.c)}</div>
   <div class="big" id="drop">${x.img&&imgUrl(x.img)?`<img src="${esc(imgUrl(x.img))}" alt="${esc(x.d)}" referrerpolicy="no-referrer">`:`<svg><use href="#i-${x.k}"/></svg><div class="hint">Sin foto todavía · ilustración del rubro</div>`}</div>
   ${x.imgFuente?`<p class="note">Foto tomada de <a href="${esc(/^https:\/\//.test(x.imgFuente)?x.imgFuente:'#')}" target="_blank" rel="noopener">${esc((x.imgFuente.match(/^https:\/\/([^/]+)/)||[])[1]||'la tienda')}</a></p>`:''}
   <h3 style="margin:16px 0 6px">Fotos encontradas por código</h3>
@@ -394,8 +415,19 @@ $('#model').addEventListener('change',()=>{page=0;render()});
 $('#sort').addEventListener('change',()=>{page=0;render()});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;cat=b.dataset.k;page=0;chips();render()});
 $('#pager').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(!b||b.disabled)return;page=+b.dataset.pg;render();$('#tbl').scrollIntoView({block:'start'})});
+$('#favBtn').addEventListener('click',()=>{favMode=!favMode;$('#favBtn').classList.toggle('on',favMode);$('#favBtn').setAttribute('aria-pressed',favMode);render();window.scrollTo({top:0})});
+$('#favExit').addEventListener('click',()=>$('#favBtn').click());
+$('#favList').addEventListener('click',e=>{const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}const o=e.target.closest('[data-open]');if(o)openPane(o.dataset.open)});
+$('#favList').addEventListener('change',e=>{const c=e.target.closest('[data-cant]');if(c){const v=Math.max(1,Math.round(+c.value||1));c.value=v;updFav(c.dataset.cant,{cantidad:v});return}
+  const n=e.target.closest('[data-nota]');if(n)updFav(n.dataset.nota,{nota:n.value.trim()||null})});
+$('#favList').addEventListener('input',e=>{const c=e.target.closest('[data-cant]');if(c&&+c.value>=1){FAVS[c.dataset.cant].cantidad=Math.round(+c.value);renderFavSum()}});
+$('#favCopy').addEventListener('click',async()=>{const rs=favRows();if(!rs.length)return;
+  const lines=rs.map(({f,x})=>`${f.cantidad} x ${x.d} (${x.c}) - ${usd(fin(x.p))} c/u = ${usd(fin(x.p)*f.cantidad)}${f.nota?' - '+f.nota:''}`);
+  const tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0);
+  try{await navigator.clipboard.writeText('Repuestos seleccionados\n'+lines.join('\n')+'\nTotal: '+usd(tot));toast('Listado copiado. Podés pegarlo en WhatsApp o en un mail.')}catch(e){toast('No se pudo copiar.')}});
 $('#editBtn').addEventListener('click',()=>{editMode=!editMode;$('#editBtn').classList.toggle('on',editMode);$('#editBtn').setAttribute('aria-pressed',editMode);$('#editBtn').textContent=editMode?'Terminar edición':'Modo edición';render()});
 $('#tb').addEventListener('click',e=>{
+  const sf=e.target.closest('[data-fav]');if(sf){toggleFav(sf.dataset.fav);return}
   const o=e.target.closest('[data-open]');if(o){openPane(o.dataset.open);return}
   const d=e.target.closest('[data-del]');if(d)del(d.dataset.del);
 });
@@ -421,6 +453,7 @@ $('#pane').addEventListener('click',e=>{
   else if(t.id==='pSaveInfo'){save(x.id,{info:$('#pInfo').value.trim()||null});toast('Información guardada.')}
   else if(t.id==='pNoImg')save(x.id,{img:null});
   else if(t.id==='pLogin'){openLogin()}
+  else if(t.id==='pFav'){toggleFav(x.id)}
   else if(t.id==='pUrlOk'){const u=$('#pUrl').value.trim();if(!/^https:\/\/\S+$/.test(u)){toast('Pegá un link que empiece con https://');return}save(x.id,{img:u,imgFuente:null});toast('Foto guardada.')}
   else if(t.id==='pDel')del(x.id);
   else if(t.id==='pRestore')save(x.id,{d:null,p:null});
@@ -460,16 +493,57 @@ fetch('data.json').then(r=>r.json()).then(rows=>{
   const hid=decodeURIComponent((location.hash||'').slice(1));if(hid&&items.some(y=>y.id===hid))openPane(hid);
 }).catch(()=>{$('#count').textContent='No se pudo cargar la lista.'});
 
+async function loadFavs(){
+  if(!canFav){FAVS={};return}
+  const {data,error}=await sb.from('favoritos').select('id,cantidad,nota,creado').order('creado');
+  if(error){toast('No se pudieron cargar tus favoritos.');return}
+  const m={};(data||[]).forEach(r=>m[r.id]={cantidad:+r.cantidad||1,nota:r.nota||'',creado:r.creado});FAVS=m;
+}
+async function toggleFav(id){
+  if(!canFav)return;
+  const had=!!FAVS[id];
+  if(had)delete FAVS[id];else FAVS[id]={cantidad:1,nota:'',creado:new Date().toISOString()};
+  render();if(openId)drawPane();
+  const q=had?sb.from('favoritos').delete().eq('email',me.email).eq('id',id):sb.from('favoritos').insert({email:me.email,id});
+  const {error}=await q;
+  if(error){if(had)FAVS[id]={cantidad:1,nota:''};else delete FAVS[id];render();if(openId)drawPane();toast('No se pudo guardar el favorito.');return}
+  toast(had?'Quitado de favoritos.':'Agregado a favoritos.',had?'Deshacer':null,had?()=>toggleFav(id):null);
+}
+async function updFav(id,patch){
+  if(!FAVS[id])return;Object.assign(FAVS[id],patch);
+  const {error}=await sb.from('favoritos').update(patch).eq('email',me.email).eq('id',id);
+  if(error)toast('No se pudo guardar el cambio.');else renderFavSum();
+}
+function favRows(){return Object.keys(FAVS).map(id=>({f:FAVS[id],x:items.find(y=>y.id===id)})).filter(r=>r.x).sort((a,b)=>String(a.f.creado).localeCompare(String(b.f.creado)))}
+function renderFavSum(){
+  const rs=favRows(),tot=rs.reduce((s,r)=>s+fin(r.x.p)*r.f.cantidad,0),u=rs.reduce((s,r)=>s+r.f.cantidad,0);
+  $('#favSum').textContent=rs.length?`${rs.length} repuestos · ${fmt.format(u).replace(/,00$/,'')} unidades · Total con recargo: ${usd(tot)}`:'';
+  rs.forEach(r=>{const el=document.querySelector(`[data-sub="${CSS.escape(r.x.id)}"]`);if(el)el.textContent=usd(fin(r.x.p)*r.f.cantidad)});
+  const t=$('#favTot');if(t)t.innerHTML=`<span>Total con recargo</span><strong>${usd(tot)}</strong>`;
+}
+function renderFavs(){
+  const rs=favRows();
+  $('#favList').innerHTML=rs.length?rs.map(({f,x})=>`<div class="fav">
+   <button class="th" data-open="${esc(x.id)}" aria-label="Ver ficha">${thumb(x)}</button>
+   <div><button class="nm" data-open="${esc(x.id)}">${esc(x.d)}</button><div class="code">${esc(x.c)} · ${usd(fin(x.p))} c/u</div></div>
+   <div class="sub"><strong data-sub="${esc(x.id)}"></strong><br><button class="star on" data-fav="${esc(x.id)}" aria-label="Quitar de favoritos" title="Quitar">★</button></div>
+   <div class="q"><label class="note" style="margin:0">Cant.</label><input class="cant" type="number" min="1" step="1" inputmode="numeric" value="${esc(f.cantidad)}" data-cant="${esc(x.id)}" aria-label="Cantidad">
+    <input class="nota" maxlength="500" placeholder="Nota (cliente, máquina, pedido…)" value="${esc(f.nota)}" data-nota="${esc(x.id)}" aria-label="Nota"></div>
+  </div>`).join('')+'<div class="favtot" id="favTot"></div>':'<p class="empty">Todavía no marcaste favoritos. Tocá la estrella ☆ al lado de cualquier repuesto.</p>';
+  renderFavSum();
+}
 async function setSession(s){
   session=s||null;me=null;
-  if(session){const {data}=await sb.from('editores').select('email,nombre,rol,activo').eq('email',(session.user.email||'').toLowerCase()).maybeSingle();me=data||{email:session.user.email,rol:'editor',activo:false}}
-  logged=!!(me&&me.activo);assets=logged?{}:null;
+  if(session){const {data}=await sb.from('editores').select('email,nombre,rol,activo,favoritos').eq('email',(session.user.email||'').toLowerCase()).maybeSingle();me=data||{email:session.user.email,rol:'editor',activo:false}}
+  logged=!!(me&&me.activo&&me.rol!=='consulta');assets=logged?{}:null;
+  canFav=!!(me&&me.activo&&(me.favoritos||me.rol==='admin'));
+  await loadFavs();$('#favBtn').hidden=!canFav;if(!canFav&&favMode){favMode=false}
   const isAdm=logged&&me.rol==='admin';
   $('#loginBtn').hidden=false;$('#loginBtn').textContent=!session?'Ingresar':isAdm?'Panel admin':'Mi cuenta';
   ['#editBtn','#addBtn'].forEach(s=>$(s).hidden=!logged);$('#pct').disabled=!logged;
   if(!logged&&editMode)$('#editBtn').click();
-  if(session&&!logged)$('#sync').textContent='Tu usuario no está habilitado para editar. Pedíselo al administrador.';
-  if(openId)drawPane();
+  if(session&&!logged)$('#sync').textContent=me&&me.activo?'Tu usuario es de consulta: podés ver la lista y usar favoritos.':'Tu usuario no está habilitado. Pedíselo al administrador.';
+  render();if(openId)drawPane();
   if($('#aov').classList.contains('open'))openAccount();
 }
 async function fn(body){
@@ -491,7 +565,7 @@ async function openLogin(){
 const genPass=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';const r=new Uint32Array(10);crypto.getRandomValues(r);return [...r].map(n=>a[n%a.length]).join('')};
 let users=[];
 async function loadUsers(){
-  const {data,error}=await sb.from('editores').select('email,nombre,rol,activo,creado').order('creado');
+  const {data,error}=await sb.from('editores').select('email,nombre,rol,activo,favoritos,creado').order('creado');
   if(error){$('#uList').textContent='No se pudo cargar la lista de usuarios.';return}
   users=data||[];drawUsers();
 }
@@ -502,7 +576,8 @@ function drawUsers(){
    <div class="who"><b>${esc(u.nombre||u.email)}</b><span class="st ${u.activo?'on':'off'}">${u.activo?'Habilitado':'Sin acceso'}</span></div>
    ${u.nombre?`<span class="note">${e}</span>`:''}
    <div class="row">
-    <select data-rol="${e}" aria-label="Permiso de ${e}" ${yo?'disabled':''}><option value="editor"${u.rol==='editor'?' selected':''}>Editor</option><option value="admin"${u.rol==='admin'?' selected':''}>Administrador</option></select>
+    <select data-rol="${e}" aria-label="Permiso de ${e}" ${yo?'disabled':''}><option value="consulta"${u.rol==='consulta'?' selected':''}>Consulta</option><option value="editor"${u.rol==='editor'?' selected':''}>Editor</option><option value="admin"${u.rol==='admin'?' selected':''}>Administrador</option></select>
+    <label class="note" style="display:inline-flex;gap:6px;align-items:center;margin:0"><input type="checkbox" data-favu="${e}" ${u.favoritos||u.rol==='admin'?'checked':''} ${u.rol==='admin'?'disabled':''}> Favoritos</label>
     ${yo?'<span class="note">(vos)</span>':`<button class="btn" data-act="${u.activo?'off':'on'}" data-e="${e}">${u.activo?'Quitar acceso':'Habilitar'}</button>
     <button class="btn" data-act="pw" data-e="${e}">Nueva contraseña</button>
     <button class="btn" data-act="del" data-e="${e}">Eliminar</button>`}
@@ -512,7 +587,7 @@ function openAccount(){
   $('#aov').classList.add('open');
   const isAdm=logged&&me.rol==='admin';
   $('#aT').textContent=isAdm?'Panel de administración':'Mi cuenta';
-  $('#aYo').textContent=me?`${me.nombre?me.nombre+' · ':''}${me.email} · ${!me.activo?'sin acceso para editar':me.rol==='admin'?'administrador':'editor'}`:'';
+  $('#aYo').textContent=me?`${me.nombre?me.nombre+' · ':''}${me.email} · ${!me.activo?'sin acceso':me.rol==='admin'?'administrador':me.rol==='consulta'?'consulta':'editor'}${canFav?' · favoritos':''}`:'';
   $('#adm').hidden=!isAdm;if(isAdm)loadUsers();
 }
 async function userAct(act,email,out){
@@ -566,11 +641,12 @@ if(CFG.url&&CFG.anonKey&&window.supabase){
   $('#uGen').addEventListener('click',()=>{$('#uPass').value=genPass()});
   $('#uForm').addEventListener('submit',async e=>{e.preventDefault();const m=$('#uMsg');m.textContent='Creando…';
     const email=$('#uMail').value.trim(),password=$('#uPass').value;
-    try{const r=await fn({accion:'crear_usuario',email,password,nombre:$('#uNombre').value.trim(),rol:$('#uRol').value});
+    try{const r=await fn({accion:'crear_usuario',email,password,nombre:$('#uNombre').value.trim(),rol:$('#uRol').value,favoritos:$('#uFav').checked});
       m.textContent=(r.existia?'La cuenta ya existía: le puse esta contraseña y la habilité. ':'Usuario creado. ')+'Pasale: '+email+' / '+password;
       $('#uNombre').value='';$('#uMail').value='';$('#uPass').value='';await loadUsers()}catch(err){m.textContent=err.message}});
   $('#uList').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const em=b.dataset.e;userAct(b.dataset.act,em,document.querySelector(`[data-out="${CSS.escape(em)}"]`))});
-  $('#uList').addEventListener('change',async e=>{const s=e.target.closest('[data-rol]');if(!s)return;const out=document.querySelector(`[data-out="${CSS.escape(s.dataset.rol)}"]`);
+  $('#uList').addEventListener('change',async e=>{const fu=e.target.closest('[data-favu]');if(fu){const out=document.querySelector(`[data-out="${CSS.escape(fu.dataset.favu)}"]`);const {error}=await sb.from('editores').update({favoritos:fu.checked}).eq('email',fu.dataset.favu);out.textContent=error?'No se pudo: '+(error.message||''):(fu.checked?'Favoritos habilitado.':'Favoritos deshabilitado.');if(error)loadUsers();return}
+    const s=e.target.closest('[data-rol]');if(!s)return;const out=document.querySelector(`[data-out="${CSS.escape(s.dataset.rol)}"]`);
     const {error}=await sb.from('editores').update({rol:s.value}).eq('email',s.dataset.rol);out.textContent=error?('No se pudo: '+(error.message||'')):'Permiso actualizado.';if(error)loadUsers()});
 }else{
   localLoad();$('#sync').textContent='Sin base conectada: los cambios se guardan solo en este navegador.';
